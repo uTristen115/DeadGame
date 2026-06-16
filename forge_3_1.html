@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>DEAD HARVEST — FORGE</title>
+<title>DEAD GAME — FORGE</title>
 <style>
   :root{
     --blood:#c1121f;
@@ -118,7 +118,7 @@
 <canvas id="c"></canvas>
 
 <div id="topbar">
-  <div id="logo">DEAD HARVEST<span>FORGE</span></div>
+  <div id="logo">DEAD GAME<span>FORGE</span></div>
   <div class="sep"></div>
   <div class="tgroup">
     <button class="tb" id="modeSelect" title="Select / move objects (Esc)">SELECT</button>
@@ -228,7 +228,7 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
 <script>
 /* ============================================================
-   DEAD HARVEST — FORGE  ·  level editor for game.html
+   DEAD GAME — FORGE  ·  level editor for game.html
    Mirrors the game's kit (r128, same materials & dimensions)
    ============================================================ */
 "use strict";
@@ -705,7 +705,7 @@ function makePosterPlane(p){
   g.font = 'bold 54px Impact, Arial';
   wrapCanvasText(g, posterText(p).toUpperCase(), c.width/2, 78, c.width-90, 58);
   g.font = '24px Courier New, monospace';
-  g.fillText('DEAD HARVEST', c.width/2, c.height-78);
+  g.fillText('DEAD GAME', c.width/2, c.height-78);
   const tex = new THREE.CanvasTexture(c);
   return new THREE.Mesh(
     new THREE.PlaneGeometry(p.w || 1.5, p.h || 2.0),
@@ -3596,7 +3596,7 @@ function undo(){
 
 /* ---------- persistence ---------- */
 function serialize(){
-  const out = {app:'dead-harvest-forge', version:1};
+  const out = {app:'dead-game-forge', version:1};
   out.sky = {preset:skySettings.preset || 'default'};
   const spawns = objects
     .filter(o => o.type === 'spawnpoint')
@@ -4712,7 +4712,7 @@ function generateExport(){
   }
 
   const stamp = new Date().toISOString().slice(0,16).replace('T',' ');
-  lines.push(`/* ====== DEAD HARVEST — FORGE EXPORT · ${stamp} ====== */`);
+  lines.push(`/* ====== DEAD GAME — FORGE EXPORT · ${stamp} ====== */`);
   lines.push('');
 
   if(helpersNeeded.size){

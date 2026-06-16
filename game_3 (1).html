@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>DEAD HARVEST — Zombie Shooter</title>
+<title>DEAD GAME — Zombie Shooter</title>
 <style>
   :root{
     --blood:#c1121f;
@@ -133,7 +133,7 @@
 
 <!-- START SCREEN -->
 <div id="start" class="overlay">
-  <div class="title">DEAD HARVEST</div>
+  <div class="title">DEAD GAME</div>
   <div class="subtitle">they come with the fog</div>
   <div id="menuExtras">
     <div class="mapsel">
@@ -147,7 +147,7 @@
   </div>
   <div class="controls">
     <b>W A S D</b> move &nbsp;&nbsp; <b>MOUSE</b> aim &nbsp;&nbsp; <b>CLICK</b> fire (hold for auto)<br>
-    <b>SHIFT</b> sprint &nbsp;&nbsp; <b>R</b> reload &nbsp;&nbsp; <b>1-7</b> weapons &nbsp;&nbsp; <b>E</b> interact &nbsp;&nbsp; <b>ESC</b> pause<br>
+    <b>SHIFT</b> sprint &nbsp;&nbsp; <b>R</b> reload &nbsp;&nbsp; <b>B</b> flashlight &nbsp;&nbsp; <b>1-7</b> weapons &nbsp;&nbsp; <b>E</b> interact &nbsp;&nbsp; <b>ESC</b> pause<br>
     Earn points for kills. Spend them to open the facility doors, then<br>
     restore the power deep inside to unlock perks and the weapon upgrade station.
   </div>
@@ -215,7 +215,7 @@
 'use strict';
 
 /* ============================================================
-   DEAD HARVEST — a three.js first-person zombie shooter
+   DEAD GAME — a three.js first-person zombie shooter
    Everything (world, zombies, gun, sound) is generated in code;
    no external assets beyond the three.js library itself.
    ============================================================ */
@@ -346,7 +346,7 @@ function inferMachineRole(cfg){
    1) QUICK TEST: main menu -> "+ LOAD MAP .JSON" (this session only).
    2) SHIP IT IN THE FILE: paste the saved JSON into CUSTOM_MAPS below:
         {name:'MY MAP', desc:'short blurb', spawn:[0,2],
-         forge:{app:'dead-harvest-forge', version:1, objects:[ ... ]}}
+         forge:{app:'dead-game-forge', version:1, objects:[ ... ]}}
    3) SHIP IT AS FILES: put the .json next to game.html and list it in
       maps/manifest.json:
         [{"name":"MY MAP","desc":"...","spawn":[0,2],"url":"maps/mymap.json"}]
@@ -379,6 +379,7 @@ const MAPS = [
 // ------------------------- state -------------------------
 let scene, camera, renderer, clock;
 let gun, muzzleFlash, flashlight;
+let flashlightOn = true;
 let weaponModels = {};
 let zombies = [];               // active zombie groups
 let hittables = [];             // meshes the ray can hit
@@ -439,8 +440,19 @@ const FIRE_LIGHT_BUDGET = 8;
 const TERMINAL_LIGHT_BUDGET = 10;
 const LOCAL_LIGHT_SHADOWS = false;
 const FILL_LIGHTS_ENABLED = false;
-const FLASHLIGHT_MIN_DISTANCE = 5.5;
-const FLASHLIGHT_MAX_DISTANCE = 34;
+const WORLD_TONE_EXPOSURE = 1.06;
+const NIGHT_AMBIENT_MULTIPLIER = 1.45;
+const NIGHT_MOON_MULTIPLIER = 1.35;
+const POWERED_AMBIENT_MULTIPLIER = 1.05;
+const POWERED_MOON_MULTIPLIER = 1.03;
+const MIN_NIGHT_AMBIENT = 0.095;
+const MIN_NIGHT_MOON = 0.055;
+const FLASHLIGHT_MAX_DISTANCE = 40;
+const FLASHLIGHT_FOCUS_DISTANCE = 26;
+const FLASHLIGHT_INTENSITY = 3.2;
+const FLASHLIGHT_CONE_ANGLE = Math.PI / 6.6;
+const FLASHLIGHT_PENUMBRA = 0.5;
+const FLASHLIGHT_DECAY = 1.05;
 const TERMINAL_FACE_PIXEL_COLS = 6;
 const TERMINAL_FACE_PIXEL_ROWS = 5;
 const TERMINAL_FACE_MIN_GRID = 24;
@@ -559,14 +571,24 @@ function initEngine(){
   renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
   renderer.shadowMap.enabled = true;
   renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+  if(THREE.LinearToneMapping !== undefined) renderer.toneMapping = THREE.LinearToneMapping;
+  renderer.toneMappingExposure = WORLD_TONE_EXPOSURE;
+  if(THREE.sRGBEncoding !== undefined) renderer.outputEncoding = THREE.sRGBEncoding;
   document.body.appendChild(renderer.domElement);
 
   // flashlight rides on the camera across every map
-  flashlight = new THREE.SpotLight(0xfff2cf, 1.25, FLASHLIGHT_MAX_DISTANCE, Math.PI/8, 0.5, 1.6);
+  flashlight = new THREE.SpotLight(
+    0xfff2cf,
+    FLASHLIGHT_INTENSITY,
+    FLASHLIGHT_MAX_DISTANCE,
+    FLASHLIGHT_CONE_ANGLE,
+    FLASHLIGHT_PENUMBRA,
+    FLASHLIGHT_DECAY
+  );
   flashlight.castShadow = false;
   camera.add(flashlight);
-  flashlight.position.set(0, 0, 0.1);
-  flashlight.target.position.set(0, 0, -10);
+  flashlight.position.set(0, -0.04, -0.08);
+  flashlight.target.position.set(0, 0, -FLASHLIGHT_FOCUS_DISTANCE);
   camera.add(flashlight.target);
 
   buildGun();
@@ -587,18 +609,37 @@ function skyConfigForMap(map){
   };
   return presets[preset] || presets.default;
 }
+function visibilityIntensity(base, min, multiplier){
+  return Math.max(min, (base || 0) * multiplier);
+}
+function activeSkyIntensity(base, poweredBase, powered, min, nightMultiplier, poweredMultiplier){
+  const night = visibilityIntensity(base, min, nightMultiplier);
+  if(!powered) return night;
+  const lit = poweredBase == null ? base : poweredBase;
+  return Math.max(night, (lit || 0) * poweredMultiplier);
+}
 function setGlobalLighting(powered){
   const sky = currentSkyLighting;
   if(!sky) return;
   if(worldAmbientLight){
-    worldAmbientLight.intensity = powered
-      ? (sky.poweredAmbientI == null ? sky.ambientI : sky.poweredAmbientI)
-      : sky.ambientI;
+    worldAmbientLight.intensity = activeSkyIntensity(
+      sky.ambientI,
+      sky.poweredAmbientI,
+      powered,
+      MIN_NIGHT_AMBIENT,
+      NIGHT_AMBIENT_MULTIPLIER,
+      POWERED_AMBIENT_MULTIPLIER
+    );
   }
   if(worldMoonLight){
-    worldMoonLight.intensity = powered
-      ? (sky.poweredMoonI == null ? sky.moonI : sky.poweredMoonI)
-      : sky.moonI;
+    worldMoonLight.intensity = activeSkyIntensity(
+      sky.moonI,
+      sky.poweredMoonI,
+      powered,
+      MIN_NIGHT_MOON,
+      NIGHT_MOON_MULTIPLIER,
+      POWERED_MOON_MULTIPLIER
+    );
   }
 }
 function makeSkyDome(cfg){
@@ -3390,7 +3431,7 @@ function forgePoster(x, z, ryDeg, cfg, y){
   g2.font = 'bold 54px Impact, Arial';
   forgeWrapCanvasText(g2, forgePosterText(cfg), c.width/2, 78, c.width-90, 58);
   g2.font = '24px Courier New, monospace';
-  g2.fillText('DEAD HARVEST', c.width/2, c.height-78);
+  g2.fillText('DEAD GAME', c.width/2, c.height-78);
   const tex = new THREE.CanvasTexture(c);
   const m = new THREE.Mesh(
     new THREE.PlaneGeometry(cfg.w || 1.35, cfg.h || 1.8),
@@ -5013,7 +5054,7 @@ function forgePowerSwitch(x, z, ryDeg, zone, y){
   makePowerSwitch(x, z, (ryDeg||0)*FORGE_DEG, zone, y || 0);
 }
 
-// build a saved Forge layout ({app:'dead-harvest-forge', objects:[...]})
+// build a saved Forge layout ({app:'dead-game-forge', objects:[...]})
 function buildForge(data){
   const mats = forgeMats();
   for(const obj of (data && data.objects) || []){
@@ -6138,22 +6179,20 @@ function burst(pos, color, count, speed){
 const raycaster = new THREE.Raycaster();
 const screenCenter = new THREE.Vector2(0, 0);
 const shotDir = new THREE.Vector3(), shotRight = new THREE.Vector3(), shotUp = new THREE.Vector3();
-const flashlightDir = new THREE.Vector3();
 
 function updateFlashlightRange(){
   if(!flashlight || !camera) return;
-  camera.getWorldDirection(flashlightDir);
-  raycaster.set(camera.position, flashlightDir);
-  raycaster.near = 0.2;
-  raycaster.far = FLASHLIGHT_MAX_DISTANCE;
-  const hits = solids.length ? raycaster.intersectObjects(solids, false) : [];
-  raycaster.near = 0;
-  raycaster.far = Infinity;
-  const hit = hits.find(h => h.distance > 0.45);
-  const targetDistance = hit
-    ? Math.max(FLASHLIGHT_MIN_DISTANCE, Math.min(FLASHLIGHT_MAX_DISTANCE, hit.distance + 0.7))
-    : FLASHLIGHT_MAX_DISTANCE;
-  flashlight.distance += (targetDistance - flashlight.distance) * 0.35;
+  flashlight.visible = flashlightOn;
+  flashlight.distance = FLASHLIGHT_MAX_DISTANCE;
+  flashlight.intensity = flashlightOn ? FLASHLIGHT_INTENSITY : 0;
+  flashlight.angle = FLASHLIGHT_CONE_ANGLE;
+  flashlight.penumbra = FLASHLIGHT_PENUMBRA;
+  flashlight.decay = FLASHLIGHT_DECAY;
+  flashlight.target.position.set(0, 0, -FLASHLIGHT_FOCUS_DISTANCE);
+}
+function toggleFlashlight(){
+  flashlightOn = !flashlightOn;
+  updateFlashlightRange();
 }
 
 function getShotDirection(spread){
@@ -6312,6 +6351,7 @@ addEventListener('keydown', e => {
   keys[e.code] = true;
   const active = controlsActive();
   if(e.code === 'KeyR' && active) startReload();
+  if(e.code === 'KeyB' && active && !e.repeat) toggleFlashlight();
   if(e.code.startsWith('Digit') && active){
     const wanted = Object.values(WEAPON_DEFS).find(w => w.slot === e.code.slice(5));
     if(wanted) equipWeapon(wanted.id);
@@ -6499,7 +6539,7 @@ function backToMenu(){
   paused = false;
   ui.over.style.display = 'none';
   ui.start.style.display = 'flex';
-  ui.start.querySelector('.title').textContent = 'DEAD HARVEST';
+  ui.start.querySelector('.title').textContent = 'DEAD GAME';
   $('playBtn').textContent = 'ENTER THE FIELD';
   $('quitBtn').style.display = 'none';
   $('menuExtras').style.display = '';
@@ -7335,6 +7375,8 @@ function resetGame(begin = true){
     regenDelay:REGEN_DELAY, regenRate:REGEN_RATE,
     perks:{}, gunUpgraded:false,
   });
+  flashlightOn = true;
+  updateFlashlightRange();
   const sp = mapSpawn(mp.localSlot || 0);
   player.pos.set(sp[0], PLAYER_HEIGHT, sp[1]);
   player.yaw = ((sp[2] || 0) * Math.PI) / 180;   // forge "facing" degrees
