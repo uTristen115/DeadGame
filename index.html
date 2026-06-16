@@ -291,6 +291,54 @@ const WEAPON_DEFS = {
   },
 };
 
+const PERK_MACHINE_DEFS = {
+  reload: {
+    id:'reload', short:'QUICK HANDS', desc:'FASTER RELOAD', cost:1500, color:0xe7b53a,
+    apply(){ player.reloadMult = 0.5; applyWeaponStats(false); }
+  },
+  speed: {
+    id:'speed', short:'ADRENALINE', desc:'RUN FASTER', cost:1500, color:0x3ab8a8,
+    apply(){ player.walkSpeed = WALK_SPEED*1.3; player.sprintSpeed = SPRINT_SPEED*1.3; }
+  },
+  health: {
+    id:'health', short:'IRON VEINS', desc:'DOUBLE HEALTH', cost:2000, color:0xc1342a,
+    apply(){ player.maxHealth = 200; player.health = 200; updateHealthUI(); }
+  },
+  headshot: {
+    id:'headshot', short:'DEAD EYE', desc:'HEADSHOTS HIT HARDER', cost:2000, color:0xb8b13a,
+    apply(){ player.headMult = 5; }
+  },
+  regen: {
+    id:'regen', short:'SECOND WIND', desc:'FASTER RECOVERY', cost:2000, color:0x6fd3a0,
+    apply(){ player.regenDelay = 2.5; player.regenRate = 9; }
+  },
+};
+const PERK_MACHINE_IDS = Object.keys(PERK_MACHINE_DEFS);
+function machineTextKey(s){
+  return String(s || '').toLowerCase().replace(/[^a-z0-9]/g, '');
+}
+function inferMachinePerkId(cfg){
+  const requested = String((cfg && cfg.perk) || '').replace(/[^a-zA-Z0-9_]/g, '');
+  if(PERK_MACHINE_DEFS[requested]) return requested;
+  const titleKey = machineTextKey(cfg && cfg.title);
+  for(const id of PERK_MACHINE_IDS){
+    const pk = PERK_MACHINE_DEFS[id];
+    if(titleKey && (titleKey === machineTextKey(pk.short) || titleKey === machineTextKey(id))) return id;
+  }
+  return 'reload';
+}
+function inferMachineRole(cfg){
+  const role = String((cfg && cfg.role) || 'auto').toLowerCase();
+  if(role === 'decor' || role === 'perk' || role === 'upgrade') return role;
+  const titleKey = machineTextKey(cfg && cfg.title);
+  if(titleKey.includes('upgrade') || titleKey.includes('packapunch')) return 'upgrade';
+  for(const id of PERK_MACHINE_IDS){
+    const pk = PERK_MACHINE_DEFS[id];
+    if(titleKey && (titleKey === machineTextKey(pk.short) || titleKey === machineTextKey(id))) return 'perk';
+  }
+  return 'decor';
+}
+
 /* ============================================================
    DEV — ADDING MAPS
    Build a map in the Forge tool (forge.html) and SAVE .JSON, then:
@@ -370,7 +418,9 @@ let doors = [];         // buyable doors
 let interactables = []; // things the player can press E on
 let roomLights = [];    // lights that come alive when power is restored
 let fireLights = [];    // always-on fire glow / flicker props
+let terminalGlows = []; // animated computer terminal screen glow props
 let poweredPanels = []; // machine screens that glow once powered
+let worldAmbientLight = null, worldMoonLight = null, currentSkyLighting = null;
 let discoButtons = [], discoLights = [], discoBall = null;
 let discoActive = false, discoDrop = 0, discoHue = 0;
 let scriptButtons = [], scriptEventStates = new Map(), scriptAnimations = [];
@@ -383,7 +433,17 @@ let navZoneActivity = new Map();
 let gunGlowMats = [], gunMetalMats = [];
 
 const NAV_ZONE_ACTIVE_SECONDS = 22;
-const POWER_LIGHT_BUDGET = 12;
+const POWER_LIGHT_BUDGET = 10;
+const POWER_SHADOW_LIGHT_BUDGET = 0;
+const FIRE_LIGHT_BUDGET = 8;
+const TERMINAL_LIGHT_BUDGET = 10;
+const LOCAL_LIGHT_SHADOWS = false;
+const FILL_LIGHTS_ENABLED = false;
+const FLASHLIGHT_MIN_DISTANCE = 5.5;
+const FLASHLIGHT_MAX_DISTANCE = 34;
+const TERMINAL_FACE_PIXEL_COLS = 6;
+const TERMINAL_FACE_PIXEL_ROWS = 5;
+const TERMINAL_FACE_MIN_GRID = 24;
 
 const keys = {};
 const mp = {
@@ -502,7 +562,7 @@ function initEngine(){
   document.body.appendChild(renderer.domElement);
 
   // flashlight rides on the camera across every map
-  flashlight = new THREE.SpotLight(0xfff2cf, 1.5, 60, Math.PI/7, 0.45, 1.4);
+  flashlight = new THREE.SpotLight(0xfff2cf, 1.25, FLASHLIGHT_MAX_DISTANCE, Math.PI/8, 0.5, 1.6);
   flashlight.castShadow = false;
   camera.add(flashlight);
   flashlight.position.set(0, 0, 0.1);
@@ -518,14 +578,28 @@ function skyConfigForMap(map){
   const sky = (map && map.sky) || (map && map.forge && map.forge.sky) || {};
   const preset = String(sky.preset || 'default').toLowerCase();
   const presets = {
-    default:   {bg:0x070a08, zenith:'#050807', horizon:'#182016', fog:0x0a0f0b, density:0.028, ambient:0x1c2418, ambientI:0.9, moon:0x6f87b8, moonI:0.35, moonDisc:0xb3402f, moonSize:9},
-    bloodmoon: {bg:0x170908, zenith:'#090505', horizon:'#32100b', fog:0x210b08, density:0.034, ambient:0x2a1712, ambientI:0.82, moon:0xb86f55, moonI:0.42, moonDisc:0xd54032, moonSize:12},
-    ashfall:   {bg:0x111412, zenith:'#0c0f0e', horizon:'#252821', fog:0x191c18, density:0.04, ambient:0x242820, ambientI:0.76, moon:0x879090, moonI:0.28, moonDisc:0x8c8f82, moonSize:8},
-    storm:     {bg:0x070a12, zenith:'#03060c', horizon:'#111a24', fog:0x0b1017, density:0.038, ambient:0x111827, ambientI:0.72, moon:0x6f83b8, moonI:0.32, moonDisc:0x485064, moonSize:9},
-    eclipse:   {bg:0x050507, zenith:'#020203', horizon:'#09070b', fog:0x070609, density:0.032, ambient:0x0b0d13, ambientI:0.65, moon:0x587088, moonI:0.25, moonDisc:0x1d1f25, moonSize:11},
-    dusk:      {bg:0x171018, zenith:'#100914', horizon:'#3a1d23', fog:0x24131b, density:0.03, ambient:0x2c1d23, ambientI:0.88, moon:0xa78c82, moonI:0.3, moonDisc:0xb85842, moonSize:10},
+    default:   {bg:0x070a08, zenith:'#050807', horizon:'#182016', fog:0x0a0f0b, density:0.028, ambient:0x1c2418, ambientI:0.07, poweredAmbientI:0.24, moon:0x6f87b8, moonI:0.045, poweredMoonI:0.13, moonDisc:0xb3402f, moonSize:9},
+    bloodmoon: {bg:0x170908, zenith:'#090505', horizon:'#32100b', fog:0x210b08, density:0.034, ambient:0x2a1712, ambientI:0.06, poweredAmbientI:0.2, moon:0xb86f55, moonI:0.06, poweredMoonI:0.16, moonDisc:0xd54032, moonSize:12},
+    ashfall:   {bg:0x111412, zenith:'#0c0f0e', horizon:'#252821', fog:0x191c18, density:0.04, ambient:0x242820, ambientI:0.08, poweredAmbientI:0.26, moon:0x879090, moonI:0.035, poweredMoonI:0.1, moonDisc:0x8c8f82, moonSize:8},
+    storm:     {bg:0x070a12, zenith:'#03060c', horizon:'#111a24', fog:0x0b1017, density:0.038, ambient:0x111827, ambientI:0.055, poweredAmbientI:0.21, moon:0x6f83b8, moonI:0.04, poweredMoonI:0.11, moonDisc:0x485064, moonSize:9},
+    eclipse:   {bg:0x050507, zenith:'#020203', horizon:'#09070b', fog:0x070609, density:0.032, ambient:0x0b0d13, ambientI:0.035, poweredAmbientI:0.16, moon:0x587088, moonI:0.025, poweredMoonI:0.08, moonDisc:0x1d1f25, moonSize:11},
+    dusk:      {bg:0x171018, zenith:'#100914', horizon:'#3a1d23', fog:0x24131b, density:0.03, ambient:0x2c1d23, ambientI:0.09, poweredAmbientI:0.28, moon:0xa78c82, moonI:0.055, poweredMoonI:0.12, moonDisc:0xb85842, moonSize:10},
   };
   return presets[preset] || presets.default;
+}
+function setGlobalLighting(powered){
+  const sky = currentSkyLighting;
+  if(!sky) return;
+  if(worldAmbientLight){
+    worldAmbientLight.intensity = powered
+      ? (sky.poweredAmbientI == null ? sky.ambientI : sky.poweredAmbientI)
+      : sky.ambientI;
+  }
+  if(worldMoonLight){
+    worldMoonLight.intensity = powered
+      ? (sky.poweredMoonI == null ? sky.moonI : sky.poweredMoonI)
+      : sky.moonI;
+  }
 }
 function makeSkyDome(cfg){
   const c = document.createElement('canvas');
@@ -550,6 +624,7 @@ function makeSkyDome(cfg){
 function buildScene(map){
   scene = new THREE.Scene();
   const sky = skyConfigForMap(map);
+  currentSkyLighting = sky;
   scene.background = new THREE.Color(sky.bg);
   scene.fog = new THREE.FogExp2(sky.fog, sky.density);
   scene.add(makeSkyDome(sky));
@@ -557,12 +632,17 @@ function buildScene(map){
   // moonlight
   const moon = new THREE.DirectionalLight(sky.moon, sky.moonI);
   moon.position.set(40, 60, -30);
-  moon.castShadow = true;
+  moon.castShadow = false;
   moon.shadow.mapSize.set(1024,1024);
+  moon.shadow.bias = -0.0012;
+  moon.shadow.normalBias = 0.035;
   moon.shadow.camera.left=-90; moon.shadow.camera.right=90;
   moon.shadow.camera.top=90; moon.shadow.camera.bottom=-90;
+  worldMoonLight = moon;
   scene.add(moon);
-  scene.add(new THREE.AmbientLight(sky.ambient, sky.ambientI));
+  worldAmbientLight = new THREE.AmbientLight(sky.ambient, sky.ambientI);
+  scene.add(worldAmbientLight);
+  setGlobalLighting(powerOn);
 
   scene.add(camera);
 
@@ -659,7 +739,7 @@ function loadMap(map){
   currentMap = map;
   zombies = []; hittables = []; particles = [];
   colliders = []; solids = []; doors = []; interactables = []; windows = [];
-  roomLights = []; fireLights = []; poweredPanels = []; surfaces = [];
+  roomLights = []; fireLights = []; terminalGlows = []; poweredPanels = []; surfaces = [];
   navZones = []; navPortals = []; navSpawns = [];
   navZoneActivity.clear();
   discoButtons = []; discoLights = []; discoBall = null; discoActive = false;
@@ -1704,16 +1784,53 @@ function playerRebuildBoard(w){
   return true;
 }
 
-function setPoweredLightState(r, on, intensity, active){
+function configureLocalLight(li, opts){
+  opts = opts || {};
+  if(!li) return li;
+  const mapSize = opts.mapSize || 256;
+  li.castShadow = !!opts.castShadow && LOCAL_LIGHT_SHADOWS;
+  if(li.shadow){
+    li.shadow.mapSize.set(mapSize, mapSize);
+    li.shadow.bias = opts.bias == null ? -0.0015 : opts.bias;
+    li.shadow.normalBias = opts.normalBias == null ? 0.04 : opts.normalBias;
+    if(li.shadow.camera){
+      li.shadow.camera.near = opts.near || 0.2;
+      li.shadow.camera.far = opts.far || li.distance || 32;
+    }
+  }
+  return li;
+}
+function makePoweredFillLight(color, distance, falloff){
+  const fill = new THREE.PointLight(color, 0, distance || 12, falloff || 2.1);
+  fill.visible = false;
+  configureLocalLight(fill, {mapSize:128, castShadow:false});
+  return fill;
+}
+function setPoweredLightState(r, on, intensity, active, shadowed){
   const bulbOn = !!on;
   const lightOn = bulbOn && !!active;
+  const base = intensity == null ? (r.onIntensity || 1.2) : intensity;
   r.li.visible = lightOn;
-  r.li.intensity = lightOn ? (intensity == null ? (r.onIntensity || 1.2) : intensity) : 0;
-  r.lamp.material.color.setHex(bulbOn ? (r.onColor || 0xffe9b8) : (r.offColor || 0x1c1a14));
+  r.li.intensity = lightOn ? base : 0;
+  r.li.castShadow = lightOn && !!shadowed && r.shadow !== false && LOCAL_LIGHT_SHADOWS;
+  if(r.fill){
+    const fillOn = lightOn && FILL_LIGHTS_ENABLED;
+    r.fill.visible = fillOn;
+    r.fill.intensity = fillOn ? base * (r.fillScale || 0.18) : 0;
+    r.fill.castShadow = false;
+  }
+  if(r.lamp && r.lamp.material && r.lamp.material.color){
+    r.lamp.material.color.setHex(bulbOn ? (r.onColor || 0xffe9b8) : (r.offColor || 0x1c1a14));
+    if(r.lamp.material.opacity != null){
+      r.lamp.material.opacity = bulbOn
+        ? (r.onOpacity == null ? r.lamp.material.opacity : r.onOpacity)
+        : (r.offOpacity == null ? r.lamp.material.opacity : r.offOpacity);
+    }
+  }
 }
 function applyPoweredLightBudget(t, flickerLit){
   if(!powerOn){
-    for(const r of roomLights) setPoweredLightState(r, false, 0, false);
+    for(const r of roomLights) setPoweredLightState(r, false, 0, false, false);
     return;
   }
   const entries = [];
@@ -1727,23 +1844,100 @@ function applyPoweredLightBudget(t, flickerLit){
     entries.push({i, score:(dx*dx + dz*dz + dy*dy*0.18) * priority});
   }
   entries.sort((a,b) => a.score - b.score);
-  const active = new Set(entries.slice(0, POWER_LIGHT_BUDGET).map(e => e.i));
+  const activeEntries = entries.slice(0, POWER_LIGHT_BUDGET);
+  const active = new Set(activeEntries.map(e => e.i));
+  const shadowed = new Set(activeEntries.slice(0, POWER_SHADOW_LIGHT_BUDGET).map(e => e.i));
   for(let i=0;i<roomLights.length;i++){
     const r = roomLights[i];
     const lit = flickerLit !== false;
     const pulse = lit && powerFlicker > 0
       ? ((r.flickerLow || 0.1) + Math.random()*0.18)
       : (r.onIntensity || 1.2);
-    setPoweredLightState(r, lit, pulse, active.has(i));
+    setPoweredLightState(r, lit, pulse, active.has(i), shadowed.has(i));
   }
 }
 function updateFireLights(dt, t){
-  for(const f of fireLights){
+  const active = new Set();
+  if(FIRE_LIGHT_BUDGET > 0 && fireLights.length){
+    const p = player && player.pos ? player.pos : camera.position;
+    const entries = [];
+    for(let i=0;i<fireLights.length;i++){
+      const f = fireLights[i];
+      if(!f.li) continue;
+      const wp = new THREE.Vector3();
+      f.li.getWorldPosition(wp);
+      const dx = wp.x - p.x, dz = wp.z - p.z, dy = wp.y - (PLAYER_HEIGHT + (player.floorY || 0));
+      entries.push({i, score:dx*dx + dz*dz + dy*dy*0.15});
+    }
+    entries.sort((a,b) => a.score - b.score);
+    for(const e of entries.slice(0, FIRE_LIGHT_BUDGET)) active.add(e.i);
+  }
+  for(let idx=0; idx<fireLights.length; idx++){
+    const f = fireLights[idx];
     const pulse = 0.82 + Math.sin(t*6.2 + f.phase)*0.18 + Math.random()*0.1;
-    f.li.intensity = f.base * pulse;
+    const lightOn = active.has(idx);
+    if(f.li){
+      f.li.visible = lightOn;
+      f.li.intensity = lightOn ? f.base * pulse : 0;
+      f.li.castShadow = false;
+    }
     for(let i=0;i<(f.mats || []).length;i++){
       const m = f.mats[i];
       if(m.opacity != null) m.opacity = (i ? 0.72 : 0.58) + pulse*0.14;
+    }
+  }
+}
+function updateTerminalGlows(dt, t){
+  for(const g of terminalGlows){
+    if(!powerOn){
+      g.mat.color.setHex(0x101510);
+      if(g.li){
+        g.li.visible = false;
+        g.li.intensity = 0;
+      }
+      continue;
+    }
+    let pulse = 0.78;
+    if(g.faceActive){
+      const face = drawTerminalFacePatch(g, t);
+      if(face){
+        g.mat.color.setHex(0xffffff);
+        g.color.setRGB(face.r, face.g, face.b);
+        pulse = face.pulse;
+      }
+    } else {
+      const speed = Math.max(0, g.speed || 0);
+      const wave = t * speed + g.phase;
+      let hue = g.baseHue;
+      let sat = g.baseSat;
+      let light = 0.54;
+      if(g.mode === 'static' || speed <= 0){
+        sat = Math.max(0.68, g.baseSat);
+        light = 0.52;
+        pulse = 0.72;
+      } else if(g.mode === 'pulse'){
+        const beat = (Math.sin(wave*2.2) + 1) * 0.5;
+        hue = (g.baseHue + Math.sin(wave*0.28)*0.045 + 1) % 1;
+        sat = 0.78 + beat*0.18;
+        light = 0.38 + beat*0.26;
+        pulse = 0.32 + beat*0.92;
+      } else {
+        const slow = Math.sin(wave*0.36 + g.idx*0.19);
+        const shimmer = Math.sin(wave*1.35 + g.idx*0.73);
+        hue = (g.baseHue + t*0.026*speed + slow*0.12 + g.idx*0.009 + 1) % 1;
+        sat = 0.76 + Math.max(0, shimmer)*0.18;
+        light = 0.43 + slow*0.08 + shimmer*0.08;
+        pulse = 0.52 + ((slow + 1)*0.5)*0.34 + ((shimmer + 1)*0.5)*0.28;
+      }
+      g.color.setHSL(hue, Math.min(1, sat), Math.max(0.22, Math.min(0.72, light)));
+      g.mat.color.copy(g.color);
+    }
+    if(g.li){
+      g.li.color.copy(g.color);
+      g.li.distance = g.radius;
+      g.li.intensity = g.bright * pulse;
+      g.li.visible = g.glow && g.bright > 0;
+      g.li.castShadow = false;
     }
   }
 }
@@ -1753,7 +1947,10 @@ function addRoomLight(x, z, y, mountY){
   const li = new THREE.PointLight(0xffd9a0, 0, 32, 1.45);   // starts OFF
   li.visible = false;
   li.position.set(x, y, z);
-  scene.add(li);
+  configureLocalLight(li, {mapSize:256, far:32});
+  const fill = makePoweredFillLight(0xffd9a0, 13, 2.25);
+  fill.position.set(x, y - 0.25, z);
+  scene.add(li, fill);
   if(mountY != null && mountY > y + 0.48){
     const cordLen = mountY - (y + 0.48);
     const cord = new THREE.Mesh(new THREE.CylinderGeometry(0.022, 0.022, cordLen, 6), darkMat);
@@ -1767,7 +1964,7 @@ function addRoomLight(x, z, y, mountY){
     new THREE.MeshBasicMaterial({color:0x1c1a14}));
   bulb.position.set(x, y+0.1, z);
   scene.add(shade, bulb);
-  roomLights.push({li, lamp:bulb, kind:'room', onIntensity:1.35, flickerLow:0.12, onColor:0xffe9b8, offColor:0x1c1a14});
+  roomLights.push({li, fill, lamp:bulb, kind:'room', onIntensity:1.35, fillScale:0.16, flickerLow:0.12, onColor:0xffe9b8, offColor:0x1c1a14});
 }
 
 function addGableRoofLights(x, z, ryDeg, depth, rise, y){
@@ -1812,9 +2009,78 @@ function makeMachine(x, z, rotY, color, title, big, opts){
   grp.traverse(m => { if(m.isMesh) m.castShadow = true; });
   scene.add(grp); solids.push(body);
   const hx = Math.max(w, dpt)/2 + 0.12;
-  colliders.push({minX:x-hx, maxX:x+hx, minZ:z-hx, maxZ:z+hx, door:null,
-                  level: opts && opts.level});
+  const col = {minX:x-hx, maxX:x+hx, minZ:z-hx, maxZ:z+hx, door:null,
+               level: opts && opts.level};
+  if(opts && opts.y > 0.01) col.band = [opts.y-1.55, opts.y+h+0.8];
+  colliders.push(col);
   poweredPanels.push({mat:screen.material, color});
+}
+
+function forgeMachineCost(value, fallback){
+  const n = Number(value);
+  return Number.isFinite(n) && n > 0 ? Math.round(n) : fallback;
+}
+function forgeMachineZone(value){
+  const n = Number(value);
+  return Number.isFinite(n) ? Math.round(n) : null;
+}
+function forgeMachineNeedsPower(cfg){
+  return !(cfg && (cfg.requiresPower === 'no' || cfg.requiresPower === false));
+}
+function addPerkMachine(perkId, x, z, rotY, cfg, y){
+  cfg = cfg || {};
+  const pk = PERK_MACHINE_DEFS[String(perkId || '').replace(/[^a-zA-Z0-9_]/g, '')] || PERK_MACHINE_DEFS.reload;
+  const cost = forgeMachineCost(cfg.cost, pk.cost);
+  const y0 = Math.max(0, Number(y) || Number(cfg.y) || 0);
+  const needsPower = forgeMachineNeedsPower(cfg);
+  makeMachine(x, z, rotY || 0, pk.color, pk.short+' - '+cost, false,
+    y0 > 0.01 ? {y:y0, level:cfg.level} : null);
+  interactables.push({
+    x, z, y:y0, r:2.4, zone:forgeMachineZone(cfg.zone),
+    label(){
+      if(player.perks[pk.id]) return null;
+      if(needsPower && !powerOn) return pk.short+' - NEEDS POWER';
+      return pk.short+' ('+pk.desc+') - '+cost;
+    },
+    use(){
+      if(player.perks[pk.id]) return;
+      if(needsPower && !powerOn){ deny('NEEDS POWER'); return; }
+      if(!spend(cost)) return;
+      player.perks[pk.id] = pk.short;
+      pk.apply();
+      sfx.buy();
+      showBanner(pk.short, 1100);
+      updatePerksUI();
+    },
+  });
+}
+function addWeaponUpgradeMachine(x, z, rotY, cfg, y){
+  cfg = cfg || {};
+  const cost = forgeMachineCost(cfg.cost, 3000);
+  const y0 = Math.max(0, Number(y) || Number(cfg.y) || 0);
+  const needsPower = forgeMachineNeedsPower(cfg);
+  makeMachine(x, z, rotY || 0, 0xb05cff, 'UPGRADE STATION - '+cost, true,
+    y0 > 0.01 ? {y:y0, level:cfg.level} : null);
+  interactables.push({
+    x, z, y:y0, r:2.6, zone:forgeMachineZone(cfg.zone),
+    label(){
+      if(player.gunUpgraded) return null;
+      if(needsPower && !powerOn) return 'UPGRADE STATION - NEEDS POWER';
+      return 'UPGRADE WEAPON - '+cost;
+    },
+    use(){
+      if(player.gunUpgraded) return;
+      if(needsPower && !powerOn){ deny('NEEDS POWER'); return; }
+      if(!spend(cost)) return;
+      player.gunUpgraded = true;
+      for(const id of Object.keys(player.ownedWeapons)) player.weaponAmmo[id] = weaponMagSize(WEAPON_DEFS[id]);
+      setWeaponUpgradeVisual(true);
+      applyWeaponStats(false);
+      sfx.buy();
+      showBanner('WEAPON UPGRADED', 1400);
+      updatePerksUI();
+    },
+  });
 }
 
 // ---- room dressing helpers ----
@@ -2994,8 +3260,11 @@ function forgeStreetLamp(x, z, ryDeg, h, lit, color, y){
     const li = new THREE.PointLight(color, 0, 42, 1.25);
     li.visible = false;
     li.position.copy(bulb.position);
-    g.add(li);
-    roomLights.push({li, lamp:bulb, kind:'street', onIntensity:2.65, flickerLow:0.18, onColor:color, offColor:0x1c1a14});
+    configureLocalLight(li, {mapSize:256, far:42});
+    const fill = makePoweredFillLight(color, 18, 2.0);
+    fill.position.copy(bulb.position);
+    g.add(li, fill);
+    roomLights.push({li, fill, lamp:bulb, kind:'street', onIntensity:2.65, fillScale:0.13, flickerLow:0.18, onColor:color, offColor:0x1c1a14});
   }
   forgeSceneGroup(g, x, y || 0, z, ryDeg);
   forgeRotCollider(x, z, ryDeg, 0.22, 0.22, y || 0, h);
@@ -3271,8 +3540,10 @@ function forgeFireGroup(kind, cfg){
       g.add(forgeSmokePuff((Math.random()-0.5)*0.45*size, def.height*size + i*0.32*size, (Math.random()-0.5)*0.45*size, (0.16+Math.random()*0.16)*size));
     }
   }
-  const li = new THREE.PointLight(color, +cfg.intensity || def.intensity, +cfg.radius || def.radius, 1.35);
+  const li = new THREE.PointLight(color, 0, +cfg.radius || def.radius, 1.35);
+  li.visible = false;
   li.position.y = def.height * size;
+  configureLocalLight(li, {mapSize:256, far:+cfg.radius || def.radius, castShadow:cfg.shadow !== 'no'});
   g.add(li);
   return {group:g, light:li, mats, size, color, def};
 }
@@ -3629,7 +3900,6 @@ function forgeOutdoorSetpieceGroup(kind, p, rng){
     const label = String(p.text || '').trim();
     if(label){
       const lab = makeLabel(label.toUpperCase(), '#1c1d19', metric.w*0.9);
-      lab.scale.y = 0.35;
       lab.position.set(0, metric.h*0.45, -metric.d/2-0.012);
       grp.add(lab);
     }
@@ -3675,20 +3945,94 @@ function forgeOutdoorSetpieceGroup(kind, p, rng){
   } else if(kind === 'walkwayarch'){
     const mat = forgeMat(p.matName || 'concrete');
     const w = metric.w, h = metric.h, d = metric.d;
-    const postW = Math.max(0.18, w*0.16);
-    forgeJunkBox(grp, postW, h, d, mat, -w/2+postW/2, h/2, 0);
-    forgeJunkBox(grp, postW, h, d, mat,  w/2-postW/2, h/2, 0);
-    forgeJunkBox(grp, w, postW*0.9, d, mat, 0, h, 0);
-    const cap = new THREE.Mesh(new THREE.TorusGeometry(w*0.34, postW*0.18, 8, 24, Math.PI), mat);
-    cap.rotation.y = Math.PI/2;
-    cap.position.y = h-postW*0.08;
-    grp.add(cap);
+    const pierW = Math.max(0.22, Math.min(w*0.2, 0.78));
+    const archThick = Math.max(0.18, Math.min(w*0.1, 0.46));
+    const innerW = Math.max(0.7, w - pierW*2.1);
+    const innerR = innerW/2;
+    const springY = Math.max(h*0.42, h - innerR - archThick*1.35);
+    const baseH = Math.max(0.16, Math.min(0.28, h*0.08));
+    const capH = Math.max(0.16, Math.min(0.34, h*0.08));
+    const shaftH = Math.max(0.35, springY - baseH - capH*0.25);
+    const sideX = w/2 - pierW/2;
+    const zFront = -d/2 - 0.018, zBack = d/2 + 0.018;
+    for(const sx of [-1, 1]){
+      forgeJunkBox(grp, pierW*1.35, baseH, d*1.28, mat, sx*sideX, baseH/2, 0);
+      forgeJunkBox(grp, pierW*0.94, shaftH, d*0.96, mat, sx*sideX, baseH + shaftH/2, 0);
+      forgeJunkBox(grp, pierW*1.18, capH, d*1.18, mat, sx*sideX, springY + capH/2, 0);
+      forgeJunkBox(grp, pierW*0.18, shaftH*0.95, d*1.08, mat, sx*(w/2-pierW*0.09), baseH + shaftH/2, 0);
+      for(let i=1;i<Math.max(3, Math.round(springY/0.42));i++){
+        const y = baseH + i*(shaftH/(Math.max(3, Math.round(springY/0.42))));
+        const seamA = forgeJunkBox(grp, pierW*0.72, 0.018, 0.026, darkMat, sx*sideX, y, zFront);
+        const seamB = forgeJunkBox(grp, pierW*0.72, 0.018, 0.026, darkMat, sx*sideX, y, zBack);
+        forgeJunkNoShadow(seamA); forgeJunkNoShadow(seamB);
+      }
+    }
+    const topY = h - capH/2;
+    forgeJunkBox(grp, w*1.06, capH, d*1.25, mat, 0, topY, 0);
+    forgeJunkBox(grp, w*0.84, capH*0.55, d*1.08, mat, 0, topY - capH*0.58, 0);
+    const segs = 13;
+    const arcLen = Math.max(0.16, Math.PI*(innerR+archThick*0.45)/segs*0.92);
+    for(let i=0;i<segs;i++){
+      const theta = Math.PI - (i+0.5)*Math.PI/segs;
+      const r = innerR + archThick*0.48;
+      const x = Math.cos(theta)*r;
+      const y = springY + Math.sin(theta)*r;
+      forgeJunkBox(grp, arcLen, archThick, d*1.12, mat, x, y, 0, theta - Math.PI/2);
+    }
+    if(p.keystone !== 'no'){
+      forgeJunkBox(grp, archThick*0.76, archThick*1.48, d*1.18, mat, 0, springY + innerR + archThick*0.42, 0);
+    }
+    for(const z of [zFront, zBack]){
+      const rim = new THREE.Mesh(new THREE.TorusGeometry(innerR, 0.018, 6, 36, Math.PI), darkMat);
+      rim.position.set(0, springY, z);
+      forgeJunkNoShadow(rim);
+      grp.add(rim);
+    }
+    if(p.cracks !== 'no'){
+      for(let i=0;i<12;i++){
+        const onLeft = rng() < 0.5;
+        const sx = onLeft ? -1 : 1;
+        const crack = forgeJunkBox(grp, 0.16+rng()*0.34, 0.018, 0.028, darkMat,
+          sx*sideX + (rng()-0.5)*pierW*0.45, baseH + rng()*Math.max(0.3, shaftH), zFront);
+        crack.rotation.z = (rng()-0.5)*0.9;
+        forgeJunkNoShadow(crack);
+      }
+      for(let i=0;i<5;i++){
+        const theta = Math.PI - (i+0.5)*Math.PI/5;
+        const r = innerR + archThick*0.62;
+        const chip = forgeJunkBox(grp, 0.08+rng()*0.16, 0.02, 0.028, darkMat,
+          Math.cos(theta)*r, springY + Math.sin(theta)*r, zFront);
+        chip.rotation.z = theta - Math.PI/2 + (rng()-0.5)*0.45;
+        forgeJunkNoShadow(chip);
+      }
+    }
     if(p.vines === 'yes'){
-      for(let i=0;i<8;i++){
-        const vine = new THREE.Mesh(new THREE.CylinderGeometry(0.018,0.018, h*(0.25+rng()*0.35), 5), grassMat);
-        vine.position.set((rng()<0.5?-1:1)*(w/2-postW*0.45), h*(0.66-rng()*0.18), d/2+0.035);
-        vine.rotation.z = (rng()-0.5)*0.22;
+      const rawVineCount = Number(p.vineCount);
+      const vineCount = Math.max(0, Math.round(Number.isFinite(rawVineCount) ? rawVineCount : 12));
+      for(let i=0;i<vineCount;i++){
+        const startX = (rng()-0.5)*w*0.78;
+        const startY = h - capH*(0.4+rng()*0.8);
+        const len = h*(0.2+rng()*0.34);
+        const side = rng() < 0.55 ? zFront : zBack;
+        const pts = [
+          new THREE.Vector3(startX, startY, side),
+          new THREE.Vector3(startX+(rng()-0.5)*0.28, startY-len*0.35, side+(rng()-0.5)*0.04),
+          new THREE.Vector3(startX+(rng()-0.5)*0.42, startY-len, side+(rng()-0.5)*0.04)
+        ];
+        const vine = new THREE.Mesh(new THREE.TubeGeometry(new THREE.CatmullRomCurve3(pts), 8, 0.012+rng()*0.008, 5, false), grassMat);
         grp.add(vine);
+        for(let j=0;j<2;j++){
+          const leaf = new THREE.Mesh(new THREE.DodecahedronGeometry(0.035+rng()*0.025, 0), grassMat);
+          const t = (j+1)/3;
+          leaf.position.set(
+            pts[0].x*(1-t)+pts[2].x*t + (rng()-0.5)*0.08,
+            pts[0].y*(1-t)+pts[2].y*t,
+            side + (rng()-0.5)*0.05
+          );
+          leaf.scale.set(1.4, 0.55, 0.9);
+          leaf.rotation.y = rng()*Math.PI;
+          grp.add(leaf);
+        }
       }
     }
   } else if(kind === 'bush'){
@@ -3728,7 +4072,6 @@ function forgeOutdoorSetpieceGroup(kind, p, rng){
     } else if(style === 'sign'){
       forgeJunkBox(holder, metric.w, metric.h*0.5, 0.08, rustMat, 0, metric.h*0.46, 0);
       const lab = makeLabel((p.text || 'KEEP OUT').toUpperCase(), '#ffd27a', metric.w*0.92);
-      lab.scale.y = 0.4;
       lab.position.set(0, metric.h*0.5, -0.055);
       holder.add(lab);
       for(const sx of [-0.35,0.35]) forgeJunkBox(holder, 0.07, metric.h*0.9, 0.07, plankMat, sx*metric.w, metric.h*0.45, 0.04);
@@ -3787,6 +4130,553 @@ function forgeOutdoorSetpiece(kind, x, z, ryDeg, cfg, y){
       forgeRotCollider(x, z, ryDeg, metric.w, metric.d, y0, metric.h);
     }
   }
+}
+
+function forgeDecorWire(grp, len, h, sag, r, mat, z){
+  const curve = new THREE.CatmullRomCurve3([
+    new THREE.Vector3(-len/2, h, z || 0),
+    new THREE.Vector3(0, h - Math.max(0, sag || 0), z || 0),
+    new THREE.Vector3(len/2, h, z || 0)
+  ]);
+  const m = new THREE.Mesh(new THREE.TubeGeometry(curve, Math.max(8, Math.round(len*2)), r || 0.025, 6, false), mat || darkMat);
+  grp.add(m);
+  return m;
+}
+function forgeDecorBulb(grp, x, y, z, color, lit, s, opts){
+  opts = opts || {};
+  const col = parseInt(forgeCleanHex(color, 'ffd27a'), 16);
+  const powered = opts.alwaysOn !== true;
+  const onOpacity = opts.onOpacity == null ? 0.95 : opts.onOpacity;
+  const offOpacity = opts.offOpacity == null ? 0.35 : opts.offOpacity;
+  const bulb = new THREE.Mesh(new THREE.SphereGeometry(s || 0.11, 10, 8),
+    new THREE.MeshBasicMaterial({color:(lit && !powered) ? col : (opts.offColor || 0x2a2115), transparent:true, opacity:lit ? (powered ? offOpacity : onOpacity) : offOpacity}));
+  bulb.position.set(x, y, z);
+  forgeNoFireShadow(bulb);
+  grp.add(bulb);
+  if(lit){
+    const radius = opts.radius || 7;
+    const base = opts.intensity == null ? 0.25 : opts.intensity;
+    const li = new THREE.PointLight(col, 0, radius, opts.decay || 1.5);
+    li.visible = false;
+    li.position.copy(bulb.position);
+    configureLocalLight(li, {mapSize:opts.mapSize || 128, far:radius, castShadow:!powered && opts.shadow === true});
+    grp.add(li);
+    if(powered){
+      roomLights.push({
+        li,
+        lamp:bulb,
+        kind:opts.kind || 'decor',
+        onIntensity:base,
+        fillScale:opts.fillScale || 0,
+        flickerLow:opts.flickerLow || 0.05,
+        onColor:col,
+        offColor:opts.offColor || 0x2a2115,
+        onOpacity,
+        offOpacity,
+        shadow:opts.shadow !== false
+      });
+    } else {
+      fireLights.push({
+        li,
+        mats:[bulb.material],
+        base,
+        radius,
+        color:col,
+        phase:Math.random()*Math.PI*2,
+      });
+    }
+  }
+  return bulb;
+}
+function forgeDecorMetrics(kind, p){
+  p = p || {};
+  switch(kind){
+    case 'powerpole': return {w:0.6, d:0.6, h:+p.h || 7, block:p.block !== 'no'};
+    case 'powerline': return {w:+p.len || 8, d:1, h:+p.h || 5.5, block:false};
+    case 'wallcable': return {w:+p.len || 4, d:0.15, h:+p.h || 2, block:false};
+    case 'breakerbox': return {w:0.85, d:0.22, h:1.25, block:p.block === 'yes'};
+    case 'generator': return {w:+p.w || 1.8, d:+p.d || 1.0, h:1.1, block:p.block !== 'no'};
+    case 'transformerbox': return {w:+p.w || 1.3, d:+p.d || 0.95, h:+p.h || 1.35, block:p.block !== 'no'};
+    case 'cablespool': return {w:1.05, d:0.75, h:1.0, block:p.block === 'yes'};
+    case 'floodlight': return {w:0.8, d:0.8, h:+p.h || 2.4, block:false};
+    case 'industriallight': return {w:+p.len || 1.8, d:0.35, h:0.28, block:false};
+    case 'stringlights': return {w:+p.len || 6, d:0.5, h:+p.h || 2.8, block:false};
+    case 'emergencylight': return {w:0.9, d:0.2, h:0.45, block:false};
+    case 'candlecluster': return {w:1, d:0.8, h:0.45, block:false};
+    case 'trafficcone': return {w:+p.s || 0.55, d:+p.s || 0.55, h:(+p.s || 0.55)*1.6, block:p.block === 'yes'};
+    case 'barricade': return {w:+p.len || 2.8, d:0.5, h:1.2, block:p.block !== 'no'};
+    case 'sandbags': return {w:+p.len || 2.4, d:0.8, h:0.65, block:p.block !== 'no'};
+    case 'dumpster': return {w:+p.w || 2.6, d:+p.d || 1.35, h:+p.h || 1.35, block:p.block !== 'no'};
+    case 'tirestack': return {w:1.0, d:1.0, h:(+p.count || 4)*0.24, block:p.block === 'yes'};
+    case 'hydrant': return {w:0.55, d:0.55, h:0.95, block:p.block === 'yes'};
+    case 'roadbarrier': return {w:+p.len || 2.4, d:0.48, h:0.85, block:p.block !== 'no'};
+    case 'signpost': return {w:+p.w || 1.5, d:0.25, h:+p.h || 2.2, block:false};
+    case 'vendingmachine': return {w:1.05, d:0.75, h:2.1, block:p.block !== 'no'};
+    case 'workbench': return {w:+p.w || 2.2, d:+p.d || 0.9, h:1.15, block:p.block !== 'no'};
+    case 'toolbox': return {w:0.75, d:0.42, h:0.38, block:p.block === 'yes'};
+    case 'computerterminal': return {w:1.0, d:0.75, h:1.25, block:p.block === 'yes'};
+    case 'floorfan': return {w:0.85, d:0.55, h:1.15, block:p.block === 'yes'};
+    case 'gascan': return {w:0.46, d:0.25, h:0.62, block:p.block === 'yes'};
+    case 'stretcher': return {w:0.85, d:2.3, h:0.85, block:p.block !== 'no'};
+    case 'bedframe': return {w:+p.w || 1.25, d:+p.d || 2.2, h:0.75, block:p.block !== 'no'};
+    case 'ladder': return {w:0.72, d:0.12, h:+p.h || 3.2, block:false};
+    case 'hangingchain': return {w:0.25, d:0.25, h:+p.len || 2.4, block:false};
+    default: return {w:1, d:1, h:1, block:false};
+  }
+}
+function forgeDecorPropGroup(kind, p, rng){
+  p = p || {};
+  rng = rng || Math.random;
+  const grp = new THREE.Group();
+  const lit = p.lit !== 'no';
+  const color = forgeCleanHex(p.color, 'ffd27a');
+  const lightColor = parseInt(color, 16);
+  if(kind === 'powerpole'){
+    const h = +p.h || 7, lines = Math.max(1, Math.round(+p.lines || 3));
+    forgeSetpieceCyl(grp, 0.13, h, barkMat, 0, h/2, 0, 9);
+    forgeSetpieceBox(grp, 2.2, 0.16, 0.16, plankMat, 0, h*0.86, 0);
+    forgeSetpieceBox(grp, 1.45, 0.12, 0.12, plankMat, 0, h*0.72, 0);
+    for(let i=0;i<lines;i++){
+      const x = (i-(lines-1)/2)*0.78;
+      forgeSetpieceCyl(grp, 0.07, 0.12, glassMat, x, h*0.89, 0, 10);
+      forgeDecorWire(grp, 1.3, h*0.9, 0.04, 0.018, darkMat, x*0.08);
+    }
+    if(p.transformer !== 'no'){
+      forgeSetpieceCyl(grp, 0.28, 0.72, steelMat, -0.45, h*0.62, 0, 14);
+      forgeSetpieceBox(grp, 0.18, 0.62, 0.12, darkMat, -0.45, h*0.62, -0.3);
+    }
+  } else if(kind === 'powerline'){
+    const len = +p.len || 8, h = +p.h || 5.5, sag = +p.sag || 0.45, lines = Math.max(1, Math.round(+p.lines || 3));
+    for(let i=0;i<lines;i++) forgeDecorWire(grp, len, h - i*0.18, sag, +p.r || 0.025, darkMat, (i-(lines-1)/2)*0.28);
+  } else if(kind === 'wallcable'){
+    const len = +p.len || 4, h = +p.h || 2, lines = Math.max(1, Math.round(+p.lines || 2));
+    for(let i=0;i<lines;i++) forgeDecorWire(grp, len, h + i*0.12, +p.sag || 0.04, +p.r || 0.022, i%2 ? rustMat : darkMat, 0.035+i*0.035);
+    const boxes = Math.max(0, Math.round(+p.boxes || 2));
+    for(let i=0;i<boxes;i++){
+      const x = boxes === 1 ? 0 : (i/(boxes-1)-0.5)*len*0.8;
+      forgeSetpieceBox(grp, 0.32, 0.28, 0.08, steelMat, x, h+0.04, 0.07);
+    }
+  } else if(kind === 'breakerbox'){
+    forgeSetpieceBox(grp, 0.78, 1.05, 0.18, steelMat, 0, 0.72, 0);
+    forgeSetpieceBox(grp, 0.58, 0.78, 0.035, darkMat, 0, 0.73, -0.105);
+    for(let i=0;i<4;i++) forgeSetpieceBox(grp, 0.1, 0.035, 0.025, trimMat, -0.18+i*0.12, 0.8, -0.13);
+    forgeSetpieceCyl(grp, 0.035, 1.2, steelMat, 0, 1.65, 0.02, 8);
+  } else if(kind === 'generator'){
+    const w = +p.w || 1.8, d = +p.d || 1.0;
+    forgeSetpieceBox(grp, w, 0.72, d, rustMat, 0, 0.52, 0);
+    forgeSetpieceBox(grp, w*0.72, 0.22, d*0.84, darkMat, 0, 0.98, 0);
+    forgeSetpieceCyl(grp, 0.16, d*0.95, steelMat, -w*0.36, 0.42, 0, 12).rotation.x = Math.PI/2;
+    for(const x of [-w*0.35, w*0.35]) for(const z of [-d*0.36,d*0.36]) forgeSetpieceCyl(grp, 0.12, 0.08, darkMat, x, 0.09, z, 10);
+  } else if(kind === 'transformerbox'){
+    const w = +p.w || 1.3, d = +p.d || 0.95, h = +p.h || 1.35;
+    forgeSetpieceBox(grp, w, h, d, steelMat, 0, h/2, 0);
+    forgeSetpieceBox(grp, w*0.86, h*0.45, 0.035, darkMat, 0, h*0.55, -d/2-0.025);
+    const lab = makeLabel('HIGH VOLTAGE', '#ffd27a', w*0.9);
+    lab.position.set(0, h*0.72, -d/2-0.055); grp.add(lab);
+  } else if(kind === 'cablespool'){
+    forgeSetpieceCyl(grp, 0.43, 0.16, crateMat, -0.42, 0.52, 0, 18).rotation.z = Math.PI/2;
+    forgeSetpieceCyl(grp, 0.43, 0.16, crateMat, 0.42, 0.52, 0, 18).rotation.z = Math.PI/2;
+    forgeSetpieceCyl(grp, 0.28, 0.9, darkMat, 0, 0.52, 0, 18).rotation.z = Math.PI/2;
+    forgeDecorWire(grp, 1.2, 0.13, 0.03, 0.03, darkMat, 0.36);
+  } else if(kind === 'floodlight'){
+    const h = +p.h || 2.4;
+    forgeSetpieceCyl(grp, 0.045, h, steelMat, 0, h/2, 0, 8);
+    forgeSetpieceBox(grp, 0.62, 0.38, 0.16, darkMat, 0, h+0.02, -0.16);
+    const face = forgeSetpieceBox(grp, 0.54, 0.3, 0.035, new THREE.MeshBasicMaterial({color:0x251f16}), 0, h+0.02, -0.26);
+    forgeNoFireShadow(face);
+    if(lit){
+      const radius = +p.radius || 24;
+      const li = new THREE.PointLight(lightColor, 0, radius, 1.4);
+      li.visible = false;
+      li.position.set(0,h,-0.55);
+      configureLocalLight(li, {mapSize:128, far:radius, castShadow:false});
+      grp.add(li);
+      roomLights.push({li, lamp:face, kind:'flood', onIntensity:+p.intensity || 1.1, flickerLow:0.12, onColor:lightColor, offColor:0x251f16, shadow:false});
+    }
+  } else if(kind === 'industriallight'){
+    const len = +p.len || 1.8;
+    forgeSetpieceBox(grp, len, 0.09, 0.22, steelMat, 0, 0.05, 0);
+    const tube = forgeSetpieceCyl(grp, 0.055, len*0.84, new THREE.MeshBasicMaterial({color:0x211d16}), 0, -0.1, 0, 12);
+    tube.rotation.z = Math.PI/2; forgeNoFireShadow(tube);
+    if(lit){
+      const radius = +p.radius || 16;
+      const li = new THREE.PointLight(lightColor, 0, radius, 1.6);
+      li.visible = false;
+      li.position.y = -0.12;
+      configureLocalLight(li, {mapSize:128, far:radius, castShadow:false});
+      grp.add(li);
+      roomLights.push({li, lamp:tube, kind:'industrial', onIntensity:+p.intensity || 0.75, flickerLow:0.08, onColor:lightColor, offColor:0x211d16, shadow:false});
+    }
+  } else if(kind === 'stringlights'){
+    const len = +p.len || 6, h = +p.h || 2.8, sag = +p.sag || 0.4, bulbs = Math.max(2, Math.round(+p.bulbs || 7));
+    forgeDecorWire(grp, len, h, sag, 0.018, darkMat, 0);
+    for(let i=0;i<bulbs;i++){
+      const t = bulbs === 1 ? 0.5 : i/(bulbs-1);
+      forgeDecorBulb(grp, (t-0.5)*len, h - sag*Math.sin(Math.PI*t) - 0.13, 0, color, lit, 0.09, {kind:'string', intensity:+p.intensity || 0.22, radius:+p.radius || 5.5, shadow:false, offColor:0x21180f});
+    }
+  } else if(kind === 'emergencylight'){
+    forgeSetpieceBox(grp, 0.78, 0.28, 0.14, steelMat, 0, 1.85, 0);
+    const lab = makeLabel('EXIT', '#ff4a3a', 0.56); lab.position.set(0, 1.86, -0.095); grp.add(lab);
+    for(const x of [-0.34,0.34]){
+      forgeSetpieceBox(grp, 0.22, 0.16, 0.16, darkMat, x, 1.96, -0.08);
+      forgeDecorBulb(grp, x, 1.96, -0.18, color, lit, 0.06, {kind:'emergency', intensity:+p.intensity || 0.32, radius:+p.radius || 6, shadow:false, offColor:0x241010});
+    }
+  } else if(kind === 'candlecluster'){
+    const n = Math.max(1, Math.round(+p.count || 5));
+    for(let i=0;i<n;i++){
+      const x = (rng()-0.5)*0.7, z = (rng()-0.5)*0.5, h = 0.18+rng()*0.32;
+      forgeSetpieceCyl(grp, 0.055+rng()*0.025, h, paperMat, x, h/2, z, 10);
+      if(lit) forgeDecorBulb(grp, x, h+0.08, z, color, true, 0.045, {alwaysOn:true, intensity:+p.intensity || 0.08, radius:+p.radius || 3.2, shadow:false, offOpacity:0.35});
+    }
+  } else if(kind === 'trafficcone'){
+    const s = +p.s || 0.55;
+    forgeSetpieceBox(grp, s, 0.06, s, darkMat, 0, 0.03, 0);
+    const cone = new THREE.Mesh(new THREE.ConeGeometry(s*0.34, s*1.15, 16), new THREE.MeshLambertMaterial({color:0xc45622}));
+    cone.position.y = s*0.62; grp.add(cone);
+    forgeSetpieceBox(grp, s*0.46, 0.045, s*0.46, paperMat, 0, s*0.58, 0);
+  } else if(kind === 'barricade'){
+    const len = +p.len || 2.8;
+    for(const x of [-len/2+0.22, len/2-0.22]) forgeSetpieceBox(grp, 0.13, 1.1, 0.18, plankMat, x, 0.55, 0);
+    for(const y of [0.45,0.88]){
+      const b = forgeSetpieceBox(grp, len, 0.16, 0.12, new THREE.MeshLambertMaterial({color:0xc9852a}), 0, y, -0.04);
+      b.rotation.z = y > 0.5 ? 0.05 : -0.05;
+    }
+  } else if(kind === 'sandbags'){
+    const len = +p.len || 2.4, rows = Math.max(1, Math.round(+p.rows || 2));
+    for(let r=0;r<rows;r++){
+      const bags = Math.max(2, Math.round(len/0.52));
+      for(let i=0;i<bags;i++){
+        const bag = new THREE.Mesh(new THREE.DodecahedronGeometry(0.27,0), new THREE.MeshLambertMaterial({color:0x6b6048}));
+        bag.scale.set(1.35,0.38,0.72);
+        bag.position.set((i-(bags-1)/2)*0.5 + (r%2)*0.18, 0.16+r*0.22, (r-(rows-1)/2)*0.34);
+        bag.rotation.y = (rng()-0.5)*0.25;
+        grp.add(bag);
+      }
+    }
+  } else if(kind === 'dumpster'){
+    const w = +p.w || 2.6, d = +p.d || 1.35, h = +p.h || 1.35;
+    forgeSetpieceBox(grp, w, h, d, new THREE.MeshLambertMaterial({color:parseInt(forgeCleanHex(p.color, '2f5a3b'),16)}), 0, h/2, 0);
+    forgeSetpieceBox(grp, w*1.06, 0.16, d*1.08, darkMat, 0, h+0.08, -0.05, -0.08);
+    for(const x of [-w*0.38,w*0.38]) for(const z of [-d*0.38,d*0.38]) forgeSetpieceCyl(grp, 0.11, 0.08, darkMat, x, 0.08, z, 10);
+  } else if(kind === 'tirestack'){
+    const n = Math.max(1, Math.round(+p.count || 4));
+    for(let i=0;i<n;i++){
+      const tire = new THREE.Mesh(new THREE.TorusGeometry(0.38, 0.12, 8, 18), darkMat);
+      tire.rotation.x = Math.PI/2; tire.position.y = 0.14+i*0.22; tire.rotation.z = (i%2)*0.16; grp.add(tire);
+    }
+  } else if(kind === 'hydrant'){
+    forgeSetpieceCyl(grp, 0.16, 0.62, new THREE.MeshLambertMaterial({color:0xb52e20}), 0, 0.34, 0, 14);
+    forgeSetpieceCyl(grp, 0.22, 0.16, new THREE.MeshLambertMaterial({color:0xb52e20}), 0, 0.68, 0, 14);
+    forgeSetpieceCyl(grp, 0.07, 0.62, steelMat, 0, 0.46, 0, 10).rotation.z = Math.PI/2;
+    forgeSetpieceCyl(grp, 0.11, 0.1, steelMat, -0.36, 0.46, 0, 10).rotation.z = Math.PI/2;
+    forgeSetpieceCyl(grp, 0.11, 0.1, steelMat, 0.36, 0.46, 0, 10).rotation.z = Math.PI/2;
+  } else if(kind === 'roadbarrier'){
+    const len = +p.len || 2.4;
+    forgeSetpieceBox(grp, len, 0.72, 0.42, concreteMat, 0, 0.36, 0);
+    forgeSetpieceBox(grp, len*0.78, 0.18, 0.48, concreteMat, 0, 0.8, 0);
+    forgeSetpieceBox(grp, len*0.86, 0.08, 0.035, rustMat, 0, 0.55, -0.25);
+  } else if(kind === 'signpost'){
+    const h = +p.h || 2.2, w = +p.w || 1.5;
+    forgeSetpieceCyl(grp, 0.04, h, steelMat, 0, h/2, 0, 8);
+    const lab = makeLabel((p.text || 'WARNING').toUpperCase(), '#'+forgeCleanHex(p.color, 'ffd27a'), w);
+    lab.position.set(0, h*0.72, -0.05); grp.add(lab);
+  } else if(kind === 'vendingmachine'){
+    forgeSetpieceBox(grp, 1.05, 2.05, 0.68, new THREE.MeshLambertMaterial({color:parseInt(forgeCleanHex(p.color, '7a1f2a'),16)}), 0, 1.03, 0);
+    forgeSetpieceBox(grp, 0.62, 1.35, 0.035, glassMat, -0.12, 1.18, -0.36);
+    forgeSetpieceBox(grp, 0.22, 0.44, 0.04, darkMat, 0.32, 1.32, -0.37);
+    const lab = makeLabel((p.text || 'COLA').toUpperCase(), '#ffd27a', 0.72); lab.position.set(0, 1.88, -0.39); grp.add(lab);
+  } else if(kind === 'workbench'){
+    const w = +p.w || 2.2, d = +p.d || 0.9;
+    forgeSetpieceBox(grp, w, 0.14, d, plankMat, 0, 0.82, 0);
+    for(const x of [-w/2+0.14,w/2-0.14]) for(const z of [-d/2+0.12,d/2-0.12]) forgeSetpieceBox(grp, 0.1, 0.82, 0.1, steelMat, x, 0.41, z);
+    forgeSetpieceBox(grp, w, 0.55, 0.1, darkMat, 0, 1.22, d/2-0.03);
+    for(let i=0;i<Math.max(0, Math.round(+p.tools || 5));i++) forgeSetpieceBox(grp, 0.12+rng()*0.28, 0.035, 0.08+rng()*0.18, i%2?steelMat:rustMat, (rng()-0.5)*w*0.75, 0.92, (rng()-0.5)*d*0.45, rng()*Math.PI);
+  } else if(kind === 'toolbox'){
+    forgeSetpieceBox(grp, 0.75, 0.32, 0.42, new THREE.MeshLambertMaterial({color:0x8d1f1f}), 0, 0.18, 0);
+    forgeSetpieceBox(grp, 0.68, 0.035, 0.04, trimMat, 0, 0.36, -0.22);
+    const handle = new THREE.Mesh(new THREE.TorusGeometry(0.22,0.018,6,14,Math.PI), steelMat);
+    handle.rotation.x = Math.PI/2; handle.position.y = 0.41; grp.add(handle);
+  } else if(kind === 'computerterminal'){
+    forgeSetpieceBox(grp, 0.68, 0.18, 0.52, darkMat, 0, 0.43, 0);
+    forgeSetpieceBox(grp, 0.58, 0.48, 0.48, steelMat, 0, 0.78, -0.03);
+    const screenHex = forgeCleanHex(p.color, '6aff7a');
+    const screenMat = new THREE.MeshBasicMaterial({color:parseInt(screenHex, 16)});
+    const screen = forgeSetpieceBox(grp, 0.44, 0.28, 0.035, screenMat, 0, 0.8, -0.29);
+    forgeNoFireShadow(screen);
+    grp.userData.terminalGlow = {
+      mat:screenMat,
+      color:screenHex,
+      mode:String(p.mode || 'flow').toLowerCase(),
+      face:String(p.face || 'auto').toLowerCase(),
+      glow:p.glow !== 'no',
+      speed:forgeTerminalNumber(p.speed, 1, 0, 8),
+      radius:forgeTerminalNumber(p.radius, 7, 1, 24),
+      bright:forgeTerminalNumber(p.bright, 0.55, 0, 3),
+      localPos:new THREE.Vector3(0, 0.84, -0.46)
+    };
+    forgeSetpieceBox(grp, 0.62, 0.08, 0.28, darkMat, 0, 0.21, -0.12);
+  } else if(kind === 'floorfan'){
+    forgeSetpieceCyl(grp, 0.035, 0.72, steelMat, 0, 0.42, 0, 8);
+    forgeSetpieceBox(grp, 0.62, 0.06, 0.38, darkMat, 0, 0.05, 0);
+    const ring = new THREE.Mesh(new THREE.TorusGeometry(0.34,0.025,8,24), steelMat);
+    ring.position.y = 0.88; ring.rotation.x = Math.PI/2; grp.add(ring);
+    for(let i=0;i<4;i++){ const blade = forgeSetpieceBox(grp, 0.3, 0.035, 0.075, steelMat, 0, 0.88, -0.02, i*Math.PI/2); blade.rotation.z = i*Math.PI/2; }
+  } else if(kind === 'gascan'){
+    forgeSetpieceBox(grp, 0.42, 0.55, 0.22, new THREE.MeshLambertMaterial({color:0x9a2a1c}), 0, 0.3, 0);
+    forgeSetpieceBox(grp, 0.24, 0.08, 0.24, darkMat, 0, 0.62, 0);
+    forgeSetpieceCyl(grp, 0.035, 0.34, steelMat, 0.2, 0.56, -0.08, 8).rotation.z = 0.75;
+  } else if(kind === 'stretcher'){
+    forgeSetpieceBox(grp, 0.82, 0.12, 2.2, new THREE.MeshLambertMaterial({color:0x46583c}), 0, 0.72, 0);
+    for(const x of [-0.36,0.36]) forgeSetpieceCyl(grp, 0.025, 2.35, steelMat, x, 0.72, 0, 8).rotation.x = Math.PI/2;
+    for(const x of [-0.32,0.32]) for(const z of [-0.92,0.92]) forgeSetpieceCyl(grp, 0.025, 0.72, steelMat, x, 0.36, z, 8);
+  } else if(kind === 'bedframe'){
+    const w = +p.w || 1.25, d = +p.d || 2.2;
+    forgeSetpieceBox(grp, w, 0.12, d, steelMat, 0, 0.46, 0);
+    forgeSetpieceBox(grp, w*0.92, 0.18, d*0.84, new THREE.MeshLambertMaterial({color:0x8a806c}), 0, 0.58, 0);
+    for(const z of [-d/2,d/2]) forgeSetpieceBox(grp, w, 0.55, 0.08, steelMat, 0, 0.82, z);
+  } else if(kind === 'ladder'){
+    const h = +p.h || 3.2, rungs = Math.max(3, Math.round(+p.rungs || 8));
+    for(const x of [-0.28,0.28]) forgeSetpieceCyl(grp, 0.025, h, steelMat, x, h/2, 0, 8);
+    for(let i=0;i<rungs;i++) forgeSetpieceBox(grp, 0.62, 0.035, 0.045, steelMat, 0, 0.28+i*(h-0.5)/(rungs-1), 0);
+    grp.rotation.x = p.lean === 'yes' ? -0.32 : 0;
+  } else if(kind === 'hangingchain'){
+    const n = Math.max(2, Math.round(+p.links || 10)), len = +p.len || 2.4;
+    for(let i=0;i<n;i++){
+      const link = new THREE.Mesh(new THREE.TorusGeometry(0.09,0.018,6,12), steelMat);
+      link.rotation.x = Math.PI/2; link.rotation.y = i%2 ? Math.PI/2 : 0;
+      link.position.y = len - i*(len/n);
+      grp.add(link);
+    }
+  }
+  return grp;
+}
+
+function forgeTerminalNumber(v, fallback, min, max){
+  const n = Number(v);
+  if(!Number.isFinite(n)) return fallback;
+  return Math.max(min, Math.min(max, n));
+}
+function forgeTerminalHash01(x, z, i){
+  const n = Math.sin((x || 0)*12.9898 + (z || 0)*78.233 + (i || 0)*37.719) * 43758.5453;
+  return n - Math.floor(n);
+}
+function registerTerminalGlow(grp, x, y, z){
+  const glow = grp && grp.userData && grp.userData.terminalGlow;
+  if(!glow || !glow.mat) return;
+  const base = new THREE.Color(parseInt(forgeCleanHex(glow.color, '6aff7a'), 16));
+  const hsl = {h:0, s:0, l:0};
+  base.getHSL(hsl);
+  const local = (glow.localPos || new THREE.Vector3(0, 0.84, -0.46)).clone();
+  grp.updateMatrixWorld(true);
+  const pos = local.clone();
+  grp.localToWorld(pos);
+  const idx = terminalGlows.length;
+  terminalGlows.push({
+    mat:glow.mat,
+    pos,
+    color:new THREE.Color(),
+    baseHue:hsl.h,
+    baseSat:Math.max(0.6, hsl.s || 0.82),
+    mode:glow.mode || 'flow',
+    face:glow.face || 'auto',
+    glow:glow.glow !== false,
+    speed:glow.speed,
+    radius:glow.radius,
+    bright:glow.bright,
+    phase:forgeTerminalHash01(x, z, idx) * Math.PI * 2,
+    x:x || 0,
+    y:y || 0,
+    z:z || 0,
+    idx
+  });
+}
+function terminalClamp01(v){ return Math.max(0, Math.min(1, v)); }
+function terminalSmoothstep(edge0, edge1, x){
+  const t = terminalClamp01((x - edge0) / Math.max(0.0001, edge1 - edge0));
+  return t*t*(3 - 2*t);
+}
+function terminalRgb(r, g, b){
+  return 'rgb('+Math.round(terminalClamp01(r)*255)+','+
+    Math.round(terminalClamp01(g)*255)+','+
+    Math.round(terminalClamp01(b)*255)+')';
+}
+function terminalGroupByAxis(entries, axis){
+  const groups = new Map();
+  for(const e of entries){
+    const key = Math.round((e[axis] || 0) * 2) / 2;
+    if(!groups.has(key)) groups.set(key, []);
+    groups.get(key).push(e);
+  }
+  return [...groups.values()].sort((a,b) => b.length - a.length)[0] || [];
+}
+function terminalLevels(entries, axis){
+  const vals = entries.map(e => e[axis] || 0).sort((a,b) => a-b);
+  const tol = axis === 'y' ? 0.22 : 0.3;
+  const levels = [];
+  for(const v of vals){
+    const last = levels[levels.length - 1];
+    if(!last || Math.abs(v - last.mean) > tol){
+      levels.push({sum:v, count:1, mean:v});
+    } else {
+      last.sum += v; last.count++; last.mean = last.sum / last.count;
+    }
+  }
+  return levels.map(l => l.mean);
+}
+function terminalNearestLevel(levels, value){
+  let best = 0, dist = Infinity;
+  for(let i=0;i<levels.length;i++){
+    const d = Math.abs(levels[i] - value);
+    if(d < dist){ dist = d; best = i; }
+  }
+  return best;
+}
+function ensureTerminalFaceCanvas(e){
+  if(e.faceCanvas) return;
+  const c = document.createElement('canvas');
+  c.width = 96; c.height = 64;
+  const tex = new THREE.CanvasTexture(c);
+  tex.magFilter = THREE.NearestFilter;
+  tex.minFilter = THREE.NearestFilter;
+  tex.generateMipmaps = false;
+  e.faceCanvas = c;
+  e.faceCtx = c.getContext('2d');
+  e.faceTex = tex;
+  e.mat.map = tex;
+  e.mat.color.setHex(0xffffff);
+  e.mat.needsUpdate = true;
+}
+function assignTerminalFaceGrid(){
+  for(const e of terminalGlows) e.faceActive = false;
+  const candidates = terminalGlows.filter(e => e.face !== 'off');
+  if(candidates.length < TERMINAL_FACE_MIN_GRID) return;
+  const byX = terminalGroupByAxis(candidates, 'x');
+  const byZ = terminalGroupByAxis(candidates, 'z');
+  const cluster = byX.length >= byZ.length ? byX : byZ;
+  if(cluster.length < TERMINAL_FACE_MIN_GRID) return;
+  const xs = cluster.map(e => e.x), zs = cluster.map(e => e.z);
+  const spreadX = Math.max(...xs) - Math.min(...xs);
+  const spreadZ = Math.max(...zs) - Math.min(...zs);
+  const colAxis = spreadX >= spreadZ ? 'x' : 'z';
+  const rows = terminalLevels(cluster, 'y').sort((a,b) => b-a);
+  const cols = terminalLevels(cluster, colAxis).sort((a,b) => a-b);
+  if(rows.length < 2 || cols.length < 3) return;
+  for(const e of cluster){
+    e.faceActive = true;
+    e.faceRows = rows.length;
+    e.faceCols = cols.length;
+    e.faceRow = terminalNearestLevel(rows, e.y);
+    e.faceCol = terminalNearestLevel(cols, e[colAxis]);
+    ensureTerminalFaceCanvas(e);
+  }
+}
+function terminalFacePixel(u, v, t, seed){
+  const drift = Math.sin(t*0.23) * 0.12;
+  const cx = 0.5 + drift;
+  const cy = 0.52 + Math.sin(t*0.31) * 0.035;
+  const scan = Math.floor(v*82 + t*18) % 2 ? 0.055 : -0.03;
+  const noise = (forgeTerminalHash01(u*137 + Math.floor(t*14), v*251, seed) - 0.5) * 0.12;
+  let r = 0.015 + noise*0.18;
+  let g = 0.12 + scan + noise;
+  let b = 0.075 + noise*0.5;
+
+  const faceD = Math.pow((u-cx)/0.235, 2) + Math.pow((v-cy)/0.54, 2);
+  const face = (1 - terminalSmoothstep(0.72, 1.04, faceD)) *
+    terminalSmoothstep(cx - 0.34, cx - 0.12, u);
+  if(face > 0){
+    const cheek = 1 - terminalSmoothstep(0.05, 0.62, Math.hypot((u-cx)*1.75, (v-cy)*1.18));
+    r = r*(1-face) + (0.42 + cheek*0.18 + noise*0.12)*face;
+    g = g*(1-face) + (0.88 + cheek*0.10 + scan*0.25)*face;
+    b = b*(1-face) + (0.72 + cheek*0.14)*face;
+  }
+
+  const blink = Math.pow(Math.max(0, Math.sin(t*1.55 + 1.2)), 18);
+  const eyeH = 0.034 * (1 - blink) + 0.004;
+  const leftEye = Math.pow((u-(cx-0.085))/0.046, 2) + Math.pow((v-(cy-0.105))/eyeH, 2);
+  const rightEye = Math.pow((u-(cx+0.085))/0.046, 2) + Math.pow((v-(cy-0.105))/eyeH, 2);
+  const eye = 1 - terminalSmoothstep(0.62, 1.0, Math.min(leftEye, rightEye));
+  if(eye > 0){
+    const glint = 0.35 + 0.65*(1 - blink);
+    r = r*(1-eye) + 0.72*glint*eye;
+    g = g*(1-eye) + 1.0*eye;
+    b = b*(1-eye) + 0.86*eye;
+  }
+
+  const nose = (1 - terminalSmoothstep(0.012, 0.04, Math.abs(u-cx))) *
+    (1 - terminalSmoothstep(0.02, 0.16, Math.abs(v-(cy+0.045))));
+  if(nose > 0){ r *= 1 - nose*0.45; g *= 1 - nose*0.52; b *= 1 - nose*0.5; }
+
+  const mouthY = cy + 0.205 + Math.sin(t*0.8)*0.012;
+  const mouth = (1 - terminalSmoothstep(0.018, 0.055, Math.abs(v-mouthY))) *
+    (1 - terminalSmoothstep(0.055, 0.17, Math.abs(u-cx)));
+  if(mouth > 0){ r *= 1 - mouth*0.78; g *= 1 - mouth*0.86; b *= 1 - mouth*0.82; }
+
+  const edge = terminalSmoothstep(0.72, 1.1, faceD);
+  g += (1 - edge) * (0.04 + Math.sin(t*3.5 + seed)*0.025);
+  const energy = terminalClamp01(face*0.45 + eye*0.5 + mouth*0.2 + g*0.25);
+  return {r:terminalClamp01(r), g:terminalClamp01(g), b:terminalClamp01(b), energy};
+}
+function drawTerminalFacePatch(e, t){
+  if(!e.faceActive || !e.faceCtx) return null;
+  if(e.nextFaceDraw && t < e.nextFaceDraw) return e.lastFaceColor || null;
+  e.nextFaceDraw = t + 1/18 + forgeTerminalHash01(e.idx, e.faceRow, e.faceCol)*0.025;
+  const ctx = e.faceCtx, cw = e.faceCanvas.width, ch = e.faceCanvas.height;
+  const pw = cw / TERMINAL_FACE_PIXEL_COLS;
+  const ph = ch / TERMINAL_FACE_PIXEL_ROWS;
+  let ar = 0, ag = 0, ab = 0, energy = 0;
+  for(let py=0; py<TERMINAL_FACE_PIXEL_ROWS; py++){
+    for(let px=0; px<TERMINAL_FACE_PIXEL_COLS; px++){
+      const u = (e.faceCol + (px + 0.5) / TERMINAL_FACE_PIXEL_COLS) / e.faceCols;
+      const v = (e.faceRow + (py + 0.5) / TERMINAL_FACE_PIXEL_ROWS) / e.faceRows;
+      const c = terminalFacePixel(u, v, t, e.idx*0.37 + px*3 + py*11);
+      ctx.fillStyle = terminalRgb(c.r, c.g, c.b);
+      ctx.fillRect(Math.floor(px*pw), Math.floor(py*ph), Math.ceil(pw)+1, Math.ceil(ph)+1);
+      ar += c.r; ag += c.g; ab += c.b; energy += c.energy;
+    }
+  }
+  ctx.strokeStyle = 'rgba(0,0,0,0.36)';
+  ctx.lineWidth = 3;
+  ctx.strokeRect(1.5, 1.5, cw-3, ch-3);
+  e.faceTex.needsUpdate = true;
+  const n = TERMINAL_FACE_PIXEL_COLS * TERMINAL_FACE_PIXEL_ROWS;
+  e.lastFaceColor = {
+    r:ar/n,
+    g:ag/n,
+    b:ab/n,
+    pulse:0.45 + terminalClamp01(energy/n)*1.35
+  };
+  return e.lastFaceColor;
+}
+function allocateTerminalLights(){
+  assignTerminalFaceGrid();
+  const entries = terminalGlows.filter(e => e.glow && e.bright > 0 && e.radius > 0);
+  if(!entries.length) return;
+  const count = Math.min(TERMINAL_LIGHT_BUDGET, entries.length);
+  const ordered = entries.slice().sort((a, b) => (a.z - b.z) || (a.x - b.x) || (a.idx - b.idx));
+  const used = new Set();
+  for(let i=0;i<count;i++){
+    let pick = Math.floor((i + 0.5) * ordered.length / count);
+    while(used.has(pick) && pick < ordered.length - 1) pick++;
+    while(used.has(pick) && pick > 0) pick--;
+    if(used.has(pick)) continue;
+    used.add(pick);
+    const e = ordered[pick];
+    e.li = new THREE.PointLight(parseInt(forgeCleanHex(e.mat.color.getHexString(), '6aff7a'), 16), 0, e.radius, 1.55);
+    e.li.position.copy(e.pos);
+    configureLocalLight(e.li, {mapSize:128, far:e.radius, castShadow:false});
+    scene.add(e.li);
+  }
+}
+function forgeDecorProp(kind, x, z, ryDeg, cfg, y){
+  cfg = cfg || {};
+  const g = forgeDecorPropGroup(kind, cfg, Math.random);
+  const metric = forgeDecorMetrics(kind, cfg);
+  const y0 = y == null ? 0 : y;
+  const solidsHere = [];
+  if(metric.block) g.traverse(m => { if(m.isMesh && !m.userData.noShadows) solidsHere.push(m); });
+  forgeSceneGroup(g, x, y0, z, ryDeg, solidsHere);
+  registerTerminalGlow(g, x, y0, z);
+  if(metric.block) forgeRotCollider(x, z, ryDeg, metric.w, metric.d, y0, metric.h);
 }
 
 function forgeScriptButtonId(id){
@@ -4164,6 +5054,38 @@ function buildForge(data){
         case 'bonfire':    forgeFire('bonfire', obj.x, obj.z, obj.ry, p, obj.y || 0); break;
         case 'walltorch':  forgeFire('torch', obj.x, obj.z, obj.ry, p, obj.y || 1.65); break;
         case 'backdropsetpiece': forgeBackdropSetpiece(obj.x, obj.z, obj.ry, p, obj.y || 0); break;
+        case 'powerpole':
+        case 'powerline':
+        case 'wallcable':
+        case 'breakerbox':
+        case 'generator':
+        case 'transformerbox':
+        case 'cablespool':
+        case 'ladder':
+        case 'hangingchain':
+        case 'floodlight':
+        case 'industriallight':
+        case 'stringlights':
+        case 'emergencylight':
+        case 'candlecluster':
+        case 'trafficcone':
+        case 'barricade':
+        case 'sandbags':
+        case 'dumpster':
+        case 'tirestack':
+        case 'hydrant':
+        case 'roadbarrier':
+        case 'signpost':
+        case 'vendingmachine':
+        case 'workbench':
+        case 'toolbox':
+        case 'computerterminal':
+        case 'floorfan':
+        case 'gascan':
+        case 'stretcher':
+        case 'bedframe':
+          forgeDecorProp(obj.type, obj.x, obj.z, obj.ry, p, obj.y || 0);
+          break;
         case 'gravestone':
         case 'dirtpile':
         case 'grasspatch':
@@ -4198,9 +5120,15 @@ function buildForge(data){
         case 'shelf':     shelf(obj.x, obj.z, obj.y || 0); break;
         case 'desk':      desk(obj.x, obj.z, ryRad, obj.y || 0); break;
         case 'machine':
-          makeMachine(obj.x, obj.z, ryRad, parseInt(p.color, 16) || 0x7a8450,
-                      p.title || 'MACHINE', p.big === 'yes',
-                      obj.y > 0.01 ? {y:obj.y, band:[obj.y-1.55, obj.y+2.0]} : null);
+          if(inferMachineRole(p) === 'perk'){
+            addPerkMachine(inferMachinePerkId(p), obj.x, obj.z, ryRad, p, obj.y || 0);
+          } else if(inferMachineRole(p) === 'upgrade'){
+            addWeaponUpgradeMachine(obj.x, obj.z, ryRad, p, obj.y || 0);
+          } else {
+            makeMachine(obj.x, obj.z, ryRad, parseInt(p.color, 16) || 0x7a8450,
+                        p.title || 'MACHINE', p.big === 'yes',
+                        obj.y > 0.01 ? {y:obj.y, band:[obj.y-1.55, obj.y+2.0]} : null);
+          }
           break;
         case 'lamp':      addRoomLight(obj.x, obj.z, obj.y || WALL_H-0.55); break;
         case 'rubble':    rubble(obj.x, obj.z, p.n || 5); break;
@@ -4230,6 +5158,12 @@ function buildForge(data){
           break;
         }
         case 'spawnpoint': break;   // editor-only marker — read by mapSpawn()
+        case 'perkmachine':
+          addPerkMachine(p.perk || 'reload', obj.x, obj.z, ryRad, p, obj.y || 0);
+          break;
+        case 'upgrademachine':
+          addWeaponUpgradeMachine(obj.x, obj.z, ryRad, p, obj.y || 0);
+          break;
         case 'zwindow': {
           forgeWindowExact(obj.x, obj.z, p.axis, p.side, obj.ry,
                            p.zoneA || 'outside', p.zoneB || String(p.zone || 'room1'), p.boards,
@@ -4252,6 +5186,7 @@ function buildForge(data){
       console.warn('forge object skipped', obj && obj.type, err);
     }
   }
+  allocateTerminalLights();
 }
 
 function buildBuilding(){
@@ -4532,6 +5467,7 @@ function setPower(on, opts){
   powerOn = on;
   ui.power.textContent = on ? 'POWER ON' : 'POWER OFF';
   ui.power.classList.toggle('on', on);
+  setGlobalLighting(on);
   if(powerLever) powerLever.rotation.x = on ? -0.7 : 0.7;
   if(on){
     if(!quiet){
@@ -4541,10 +5477,12 @@ function setPower(on, opts){
     powerFlicker = 2.2;   // lights stutter awake
     applyPoweredLightBudget(clock ? clock.elapsedTime : 0, false);
     for(const p of poweredPanels) p.mat.color.setHex(p.color);
+    updateTerminalGlows(0, clock ? clock.elapsedTime : 0);
   } else {
     powerFlicker = 0;
     applyPoweredLightBudget(clock ? clock.elapsedTime : 0, false);
     for(const p of poweredPanels) p.mat.color.setHex(0x131513);
+    updateTerminalGlows(0, clock ? clock.elapsedTime : 0);
   }
 }
 
@@ -5200,6 +6138,23 @@ function burst(pos, color, count, speed){
 const raycaster = new THREE.Raycaster();
 const screenCenter = new THREE.Vector2(0, 0);
 const shotDir = new THREE.Vector3(), shotRight = new THREE.Vector3(), shotUp = new THREE.Vector3();
+const flashlightDir = new THREE.Vector3();
+
+function updateFlashlightRange(){
+  if(!flashlight || !camera) return;
+  camera.getWorldDirection(flashlightDir);
+  raycaster.set(camera.position, flashlightDir);
+  raycaster.near = 0.2;
+  raycaster.far = FLASHLIGHT_MAX_DISTANCE;
+  const hits = solids.length ? raycaster.intersectObjects(solids, false) : [];
+  raycaster.near = 0;
+  raycaster.far = Infinity;
+  const hit = hits.find(h => h.distance > 0.45);
+  const targetDistance = hit
+    ? Math.max(FLASHLIGHT_MIN_DISTANCE, Math.min(FLASHLIGHT_MAX_DISTANCE, hit.distance + 0.7))
+    : FLASHLIGHT_MAX_DISTANCE;
+  flashlight.distance += (targetDistance - flashlight.distance) * 0.35;
+}
 
 function getShotDirection(spread){
   camera.getWorldDirection(shotDir);
@@ -6478,6 +7433,7 @@ function update(dt){
   camera.rotation.order = 'YXZ';
   camera.rotation.y = player.yaw;
   camera.rotation.x = player.pitch;
+  updateFlashlightRange();
   mpTick(dt, t);
 
   // --- gun ---
@@ -6524,6 +7480,7 @@ function update(dt){
     applyPoweredLightBudget(t, true);
   }
   updateFireLights(dt, t);
+  updateTerminalGlows(dt, t);
   updateDisco(dt, t);
   updateScriptedEvents(dt, t);
 
