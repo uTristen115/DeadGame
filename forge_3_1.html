@@ -112,6 +112,21 @@
   #toast{position:fixed;top:54px;left:50%;transform:translateX(-50%);z-index:60;
     background:#2a1013;border:1px solid var(--blood);color:var(--bone);padding:8px 18px;
     font-size:12px;letter-spacing:.05em;display:none;}
+
+  /* ---------- transform gizmo ---------- */
+  #transformTools{position:fixed;top:52px;left:50%;transform:translateX(-50%);z-index:29;
+    display:none;align-items:center;gap:4px;padding:5px;background:rgba(12,16,11,.94);
+    border:1px solid var(--line);box-shadow:0 4px 18px rgba(0,0,0,.45);}
+  #transformTools.show{display:flex;}
+  .xformBtn{width:36px;height:32px;display:grid;place-items:center;background:var(--panel2);
+    color:var(--bone);border:1px solid var(--line);cursor:pointer;}
+  .xformBtn:hover{background:#1e2418;border-color:#566149;}
+  .xformBtn.on{background:#263318;border-color:var(--rot);color:#fff;
+    box-shadow:inset 0 -2px 0 var(--rot);}
+  .xformBtn svg{width:19px;height:19px;fill:none;stroke:currentColor;stroke-width:1.8;
+    stroke-linecap:round;stroke-linejoin:round;pointer-events:none;}
+  #transformTools .xformLabel{color:var(--dim);font-size:9px;letter-spacing:.14em;
+    padding:0 3px;text-transform:uppercase;user-select:none;}
 </style>
 </head>
 <body>
@@ -160,6 +175,19 @@
   <input type="file" id="fileInput" accept=".json" style="display:none">
 </div>
 
+<div id="transformTools" aria-label="Transform selected objects">
+  <span class="xformLabel">Transform</span>
+  <button class="xformBtn on" id="gizmoMove" title="Move selected objects">
+    <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v18M3 12h18M12 3l-3 3M12 3l3 3M12 21l-3-3M12 21l3-3M3 12l3-3M3 12l3 3M21 12l-3-3M21 12l-3 3"/></svg>
+  </button>
+  <button class="xformBtn" id="gizmoRotate" title="Rotate selected objects">
+    <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 8V3l-2 2a9 9 0 1 0 2.1 9"/><path d="M20 3h-5"/></svg>
+  </button>
+  <button class="xformBtn" id="gizmoScale" title="Scale selected objects">
+    <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 16l8-8M9 5H5v4M15 19h4v-4M5 5l5 5M19 19l-5-5"/></svg>
+  </button>
+</div>
+
 <div id="palette"></div>
 
 <div id="inspector">
@@ -201,7 +229,7 @@
       <div><b>WASD</b> move camera target &nbsp; <b>F</b> focus on selection</div>
       <div class="sec">Placing</div>
       <div>Pick an asset, move mouse, <b>LMB</b> to place (keeps placing — Esc to stop)</div>
-      <div><b>R</b> / <b>Shift+R</b> rotate ghost ±15° &nbsp; <b>T</b> rotate 90°</div>
+      <div><b>R</b> / <b>Shift+R</b> rotate the placement ghost or selected objects/walls ±15° &nbsp; <b>T</b> rotate 90°</div>
       <div><b>Q</b> / <b>E</b> or <b>Alt+wheel</b> lower / raise placement height</div>
       <div>With STACK on, props and walls placed on top of walls/platforms/stairs get the right height; Q/E adds on top of that</div>
       <div class="sec">Interactive</div>
@@ -218,6 +246,7 @@
       <div>WALL mode: <b>LMB</b> sets the start, move, <b>LMB</b> again to finish. Runs are axis-locked like the game's addWall. <b>Q/E</b> raises or lowers the next wall run. <b>Esc</b> cancels.</div>
       <div class="sec">Editing</div>
       <div><b>LMB</b> select · <b>Shift/Ctrl+LMB</b> add/remove · drag selected objects to move · <b>Q</b>/<b>E</b> raise/lower</div>
+      <div>Use the floating move, rotate, and scale icons to transform one object or the entire multi-selection directly in the workspace.</div>
       <div><b>Del</b> delete &nbsp; <b>Ctrl+D</b> duplicate &nbsp; <b>Ctrl+Z</b> undo</div>
       <div class="sec">Saving</div>
       <div><b>EDIT HARVEST</b> loads an editable Forge conversion of the original Harvest Facility. Save it as JSON, then use the game's LOAD MAP .JSON option to test your edited version.</div>
@@ -229,6 +258,7 @@
 <div id="toast"></div>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script src="https://unpkg.com/three@0.128.0/examples/js/controls/TransformControls.js"></script>
 <script src="gunshtml/weapon-model-catalog.js"></script>
 <script src="maps/harvest-facility-forge.js"></script>
 <script>
@@ -3409,11 +3439,12 @@ function buildWallMesh(o){
   if(o.y === undefined) o.y = 0;
   if(o.h === undefined) o.h = WALL_H;
   const h = wallHeight(o);
-  const w = Math.max(Math.abs(o.x2-o.x1), WALL_T);
-  const d = Math.max(Math.abs(o.z2-o.z1), WALL_T);
+  const dx = o.x2-o.x1, dz = o.z2-o.z1;
+  const len = Math.max(Math.hypot(dx, dz), WALL_T);
   const grp = new THREE.Group();
-  const m = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), wallMat);
+  const m = new THREE.Mesh(new THREE.BoxGeometry(len, h, WALL_T), wallMat);
   m.position.set((o.x1+o.x2)/2, (o.y||0) + h/2, (o.z1+o.z2)/2);
+  m.rotation.y = Math.atan2(-dz, dx);
   grp.add(m);
   return grp;
 }
@@ -3442,10 +3473,163 @@ const snapSel = document.getElementById('snapsel');
 const stackChk = document.getElementById('stackChk');
 const roofChk = document.getElementById('roofChk');
 const skySel = document.getElementById('skySel');
+const transformTools = document.getElementById('transformTools');
+const transformPivot = new THREE.Object3D();
+scene.add(transformPivot);
+const transformControls = THREE.TransformControls
+  ? new THREE.TransformControls(camera, renderer.domElement)
+  : null;
+let transformMode = 'translate';
+let gizmoDragging = false;
+let transformStart = null;
+let syncingTransform = false;
+if(transformControls){
+  transformControls.setSize(0.82);
+  transformControls.setSpace('world');
+  transformControls.visible = false;
+  scene.add(transformControls);
+}
+
 function snapV(v){
   const g = parseFloat(snapSel.value);
   return g > 0 ? Math.round(v/g)*g : v;
 }
+function objectScale(o, axis){
+  const value = Number(o && o[axis]);
+  return Number.isFinite(value) ? Math.max(0.05, Math.min(50, value)) : 1;
+}
+function setTransformMode(next){
+  transformMode = next === 'rotate' || next === 'scale' ? next : 'translate';
+  document.getElementById('gizmoMove').classList.toggle('on', transformMode === 'translate');
+  document.getElementById('gizmoRotate').classList.toggle('on', transformMode === 'rotate');
+  document.getElementById('gizmoScale').classList.toggle('on', transformMode === 'scale');
+  if(!transformControls) return;
+  transformControls.setMode(transformMode);
+  transformControls.setSpace('world');
+  transformControls.showX = true;
+  transformControls.showY = transformMode !== 'rotate';
+  transformControls.showZ = true;
+  if(transformMode === 'rotate'){
+    transformControls.showX = false;
+    transformControls.showY = true;
+    transformControls.showZ = false;
+  }
+  const snap = parseFloat(snapSel.value);
+  transformControls.setTranslationSnap(snap > 0 ? snap : null);
+  transformControls.setRotationSnap(THREE.MathUtils.degToRad(15));
+  transformControls.setScaleSnap(0.1);
+}
+function syncTransformGizmo(){
+  if(!transformControls) return;
+  const center = mode === 'select' ? selectionCenter() : null;
+  const show = !!center;
+  transformTools.classList.toggle('show', show);
+  if(!show){
+    transformControls.detach();
+    transformControls.visible = false;
+    return;
+  }
+  syncingTransform = true;
+  transformPivot.position.copy(center);
+  transformPivot.rotation.set(0, 0, 0);
+  transformPivot.scale.set(1, 1, 1);
+  transformPivot.updateMatrixWorld(true);
+  transformControls.attach(transformPivot);
+  transformControls.visible = true;
+  setTransformMode(transformMode);
+  syncingTransform = false;
+}
+function beginTransformDrag(){
+  const selected = selectedObjects();
+  if(!selected.length) return;
+  pushUndo();
+  transformStart = {
+    pivot: transformPivot.position.clone(),
+    objects: selected.map(o => JSON.parse(JSON.stringify(o)))
+  };
+}
+function rotateTransformPoint(x, z, pivot, radians){
+  const dx = x - pivot.x, dz = z - pivot.z;
+  const cos = Math.cos(radians), sin = Math.sin(radians);
+  return {x:pivot.x + dx*cos + dz*sin, z:pivot.z - dx*sin + dz*cos};
+}
+function applyTransformDrag(){
+  if(syncingTransform || !transformStart) return;
+  const pivot = transformStart.pivot;
+  const delta = transformPivot.position.clone().sub(pivot);
+  const turn = new THREE.Euler().setFromQuaternion(transformPivot.quaternion, 'YXZ').y;
+  const factor = new THREE.Vector3(
+    Math.max(0.05, Math.abs(transformPivot.scale.x)),
+    Math.max(0.05, Math.abs(transformPivot.scale.y)),
+    Math.max(0.05, Math.abs(transformPivot.scale.z))
+  );
+  for(const start of transformStart.objects){
+    const o = objectById(start.id);
+    if(!o) continue;
+    if(transformMode === 'translate'){
+      if(start.type === 'wall'){
+        o.x1 = +(start.x1 + delta.x).toFixed(3);
+        o.z1 = +(start.z1 + delta.z).toFixed(3);
+        o.x2 = +(start.x2 + delta.x).toFixed(3);
+        o.z2 = +(start.z2 + delta.z).toFixed(3);
+        o.y = Math.max(0, +((start.y || 0) + delta.y).toFixed(3));
+      } else {
+        o.x = +(start.x + delta.x).toFixed(3);
+        o.y = Math.max(0, +((start.y || 0) + delta.y).toFixed(3));
+        o.z = +(start.z + delta.z).toFixed(3);
+      }
+    } else if(transformMode === 'rotate'){
+      if(start.type === 'wall'){
+        const a = rotateTransformPoint(start.x1, start.z1, pivot, turn);
+        const b = rotateTransformPoint(start.x2, start.z2, pivot, turn);
+        o.x1 = +a.x.toFixed(3); o.z1 = +a.z.toFixed(3);
+        o.x2 = +b.x.toFixed(3); o.z2 = +b.z.toFixed(3);
+      } else {
+        const at = rotateTransformPoint(start.x, start.z, pivot, turn);
+        o.x = +at.x.toFixed(3); o.z = +at.z.toFixed(3);
+        let ry = (start.ry || 0) + THREE.MathUtils.radToDeg(turn);
+        ry = ((ry + 180) % 360 + 360) % 360 - 180;
+        o.ry = +ry.toFixed(3);
+      }
+    } else {
+      if(start.type === 'wall'){
+        o.x1 = +(pivot.x + (start.x1 - pivot.x) * factor.x).toFixed(3);
+        o.z1 = +(pivot.z + (start.z1 - pivot.z) * factor.z).toFixed(3);
+        o.x2 = +(pivot.x + (start.x2 - pivot.x) * factor.x).toFixed(3);
+        o.z2 = +(pivot.z + (start.z2 - pivot.z) * factor.z).toFixed(3);
+        const bottom = pivot.y + ((start.y || 0) - pivot.y) * factor.y;
+        const top = pivot.y + ((start.y || 0) + wallHeight(start) - pivot.y) * factor.y;
+        o.y = Math.max(0, +Math.min(bottom, top).toFixed(3));
+        o.h = Math.max(0.2, +Math.abs(top - bottom).toFixed(3));
+      } else {
+        o.x = +(pivot.x + (start.x - pivot.x) * factor.x).toFixed(3);
+        o.y = Math.max(0, +(pivot.y + ((start.y || 0) - pivot.y) * factor.y).toFixed(3));
+        o.z = +(pivot.z + (start.z - pivot.z) * factor.z).toFixed(3);
+        o.sx = +(objectScale(start, 'sx') * factor.x).toFixed(3);
+        o.sy = +(objectScale(start, 'sy') * factor.y).toFixed(3);
+        o.sz = +(objectScale(start, 'sz') * factor.z).toFixed(3);
+      }
+    }
+    rebuildMesh(o);
+  }
+  renderInspector(true);
+}
+if(transformControls){
+  transformControls.addEventListener('dragging-changed', event => {
+    gizmoDragging = !!event.value;
+    if(gizmoDragging) beginTransformDrag();
+    else if(transformStart){
+      transformStart = null;
+      autosave();
+      syncTransformGizmo();
+    }
+  });
+  transformControls.addEventListener('objectChange', applyTransformDrag);
+}
+document.getElementById('gizmoMove').onclick = () => setTransformMode('translate');
+document.getElementById('gizmoRotate').onclick = () => setTransformMode('rotate');
+document.getElementById('gizmoScale').onclick = () => setTransformMode('scale');
+snapSel.addEventListener('change', () => setTransformMode(transformMode));
 
 function isRoofObject(o){
   return !!(o && o.type !== 'wall' && KIT[o.type] && KIT[o.type].cat === 'ROOFS');
@@ -3550,6 +3734,7 @@ function rebuildMesh(o){
     grp = def.build(o.p, mulberry32(o.id * 7919));
     grp.position.set(o.x, o.y, o.z);
     grp.rotation.y = o.ry * Math.PI/180;
+    grp.scale.set(objectScale(o, 'sx'), objectScale(o, 'sy'), objectScale(o, 'sz'));
   }
   setShadows(grp, true);
   grp.userData.oid = o.id;
@@ -3633,6 +3818,7 @@ function setSelection(ids, primaryId){
   for(const id of next) selectedIds.add(id);
   selectedId = seen.has(primaryId) ? primaryId : (next.length ? next[next.length - 1] : null);
   renderInspector();
+  syncTransformGizmo();
 }
 function select(id){
   setSelection(id == null ? [] : [id], id);
@@ -3788,7 +3974,7 @@ function objectTopY(o){
   if(o.type === 'wall') return (o.y || 0) + wallHeight(o);
   if(o.type === 'platform') return o.y || 0;
   const def = KIT[o.type];
-  return def && def.topY ? (o.y || 0) + def.topY(o.p || {}) : null;
+  return def && def.topY ? (o.y || 0) + def.topY(o.p || {}) * objectScale(o, 'sy') : null;
 }
 function stackHeightUnderCursor(e){
   if(stackChk.checked){
@@ -3856,6 +4042,7 @@ function beginMoveSelection(anchorId, e){
 canvas.addEventListener('contextmenu', e => e.preventDefault());
 
 canvas.addEventListener('pointerdown', e => {
+  if(gizmoDragging || (transformControls && transformControls.axis)) return;
   canvas.setPointerCapture(e.pointerId);
   lastMX = e.clientX; lastMY = e.clientY;
   if(e.button === 2 || e.button === 1){ dragBtn = e.button; return; }
@@ -3890,7 +4077,7 @@ canvas.addEventListener('pointerdown', e => {
     else pt.y = +(pt.y + placeH).toFixed(3);
     pushUndo();
     const o = {id:nextId++, type:placeType, x:pt.x, y:pt.y, z:pt.z,
-      ry:placeRot, p:JSON.parse(JSON.stringify(placeParams))};
+      ry:placeRot, sx:1, sy:1, sz:1, p:JSON.parse(JSON.stringify(placeParams))};
     objects.push(o); rebuildMesh(o); autosave();
     return;
   }
@@ -3911,6 +4098,7 @@ canvas.addEventListener('pointerdown', e => {
 canvas.addEventListener('pointermove', e => {
   const dx = e.clientX - lastMX, dy = e.clientY - lastMY;
   lastMX = e.clientX; lastMY = e.clientY;
+  if(gizmoDragging) return;
 
   if(dragBtn === 2 && !e.shiftKey){
     cam.theta -= dx * 0.006;
@@ -3971,6 +4159,7 @@ canvas.addEventListener('pointerup', e => {
     moveAnchor = null;
     moveSnapshots = [];
     autosave();
+    syncTransformGizmo();
   }
 });
 canvas.addEventListener('wheel', e => {
@@ -4007,6 +4196,7 @@ function nudgeHeight(dir, stepOverride){
     }
     renderInspector(true);
     autosave();
+    syncTransformGizmo();
   }
 }
 
@@ -4068,10 +4258,26 @@ function rotateActive(deg){
     if(placeRot > 180) placeRot -= 360;
     if(ghost) ghost.rotation.y = placeRot * Math.PI/180;
   } else if(selectedIds.size){
-    const targets = selectedObjects().filter(o => o.type !== 'wall');
+    const targets = selectedObjects();
     if(targets.length){
       pushUndo();
       for(const o of targets){
+        if(o.type === 'wall'){
+          const cx = (o.x1 + o.x2) / 2;
+          const cz = (o.z1 + o.z2) / 2;
+          const radians = deg * Math.PI / 180;
+          const cos = Math.cos(radians), sin = Math.sin(radians);
+          const rotatePoint = (x, z) => {
+            const dx = x - cx, dz = z - cz;
+            return {x:cx + dx*cos + dz*sin, z:cz - dx*sin + dz*cos};
+          };
+          const a = rotatePoint(o.x1, o.z1);
+          const b = rotatePoint(o.x2, o.z2);
+          o.x1 = +a.x.toFixed(3); o.z1 = +a.z.toFixed(3);
+          o.x2 = +b.x.toFixed(3); o.z2 = +b.z.toFixed(3);
+          rebuildMesh(o);
+          continue;
+        }
         o.ry = ((o.ry + deg) % 360 + 360) % 360;
         if(o.ry > 180) o.ry -= 360;
         const grp = meshOf.get(o.id);
@@ -4079,6 +4285,7 @@ function rotateActive(deg){
       }
       renderInspector(true);
       autosave();
+      syncTransformGizmo();
     }
   }
 }
@@ -4157,8 +4364,9 @@ function setMode(m, type){
     renderInspector();
   } else {
     statMode.innerHTML = '<b>SELECT</b>';
-    statHint.textContent = 'LMB select · Shift/Ctrl+click add/remove · drag selected · Del delete · Ctrl+D dup · Ctrl+Z undo';
+    statHint.textContent = 'LMB select · Shift/Ctrl+click add/remove · use Move/Rotate/Scale gizmo · R rotates 15° · Del delete';
   }
+  syncTransformGizmo();
 }
 function makeGhost(){
   clearGhost();
@@ -4299,6 +4507,7 @@ function renderInspector(numbersOnly){
         return;
       }
       set('x',o.x); set('y',o.y); set('z',o.z); set('ry',o.ry);
+      set('sx',objectScale(o,'sx')); set('sy',objectScale(o,'sy')); set('sz',objectScale(o,'sz'));
       return;
     }
   }
@@ -4356,7 +4565,7 @@ function renderInspector(numbersOnly){
       .map(([label, count]) => `${count} ${label}${count === 1 ? '' : 's'}`)
       .join('<br>');
     insBody.innerHTML = `
-      <div class="hint">${selectedIds.size} objects selected<br><br>${summary}</div>
+      <div class="hint">${selectedIds.size} objects selected<br><br>${summary}<br><br>The workspace gizmo moves, rotates, or scales the whole selection.</div>
       <button class="act" data-dup>DUPLICATE (Ctrl+D)</button>
       <button class="act danger" data-del>DELETE (Del)</button>`;
     insBody.querySelector('[data-dup]').onclick = duplicateSelected;
@@ -4393,19 +4602,27 @@ function renderInspector(numbersOnly){
   const def = KIT[o.type];
   let html = `<div class="hint">${def.label} #${o.id}</div>`;
   html += numRow('x', o.x) + numRow('y', o.y) + numRow('z', o.z) + numRow('ry', o.ry, 'rot °');
+  html += numRow('sx', objectScale(o, 'sx'), 'scale x')
+    + numRow('sy', objectScale(o, 'sy'), 'scale y')
+    + numRow('sz', objectScale(o, 'sz'), 'scale z');
   html += paramRows(def, o.p);
   html += `<button class="act" data-dup>DUPLICATE (Ctrl+D)</button>
            <button class="act danger" data-del>DELETE (Del)</button>`;
   insBody.innerHTML = html;
 
-  for(const f of ['x','y','z','ry']){
+  for(const f of ['x','y','z','ry','sx','sy','sz']){
     insBody.querySelector(`[data-f="${f}"]`).addEventListener('change', e => {
       pushUndo();
-      o[f] = parseFloat(e.target.value) || 0;
+      o[f] = f[0] === 's'
+        ? Math.max(0.05, Math.min(50, parseFloat(e.target.value) || 1))
+        : parseFloat(e.target.value) || 0;
       const grp = meshOf.get(o.id);
       grp.position.set(o.x, o.y, o.z);
       grp.rotation.y = o.ry * Math.PI/180;
+      grp.scale.set(objectScale(o, 'sx'), objectScale(o, 'sy'), objectScale(o, 'sz'));
+      e.target.value = N(o[f]);
       autosave();
+      syncTransformGizmo();
     });
   }
   bindParamInputs(def, o.p, () => { pushUndo(); rebuildMesh(o); autosave(); });
@@ -4471,14 +4688,16 @@ const HELPERS = {
 function forgeWall(x1, z1, x2, z2, baseY, wallH){
   baseY = baseY || 0;
   wallH = wallH || WALL_H;
-  const w = Math.max(Math.abs(x2-x1), WALL_T);
-  const d = Math.max(Math.abs(z2-z1), WALL_T);
-  const mesh = new THREE.Mesh(new THREE.BoxGeometry(w, wallH, d), wallMat);
+  const dx = x2-x1, dz = z2-z1;
+  const len = Math.max(Math.hypot(dx, dz), WALL_T);
+  const ry = Math.atan2(-dz, dx);
+  const mesh = new THREE.Mesh(new THREE.BoxGeometry(len, wallH, WALL_T), wallMat);
   mesh.position.set((x1+x2)/2, baseY + wallH/2, (z1+z2)/2);
+  mesh.rotation.y = ry;
   mesh.castShadow = mesh.receiveShadow = true;
   scene.add(mesh); solids.push(mesh);
-  const col = {minX:Math.min(x1,x2)-WALL_T/2, maxX:Math.max(x1,x2)+WALL_T/2,
-               minZ:Math.min(z1,z2)-WALL_T/2, maxZ:Math.max(z1,z2)+WALL_T/2, door:null};
+  const col = {rot:true, x:(x1+x2)/2, z:(z1+z2)/2, ca:Math.cos(ry), sa:Math.sin(ry),
+               halfW:len/2, halfD:WALL_T/2, door:null};
   if(baseY > 0.01 || wallH !== WALL_H) col.band = [baseY-1.55, baseY+wallH-0.35];
   colliders.push(col);
 }`,

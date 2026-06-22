@@ -2283,16 +2283,15 @@ const WINDOWS = [
 function addWall(x1,z1,x2,z2,y0,wallH){
   y0 = y0 || 0;
   wallH = Math.max(0.2, Number(wallH) || WALL_H);
-  const w = Math.max(Math.abs(x2-x1), WALL_T);
-  const d = Math.max(Math.abs(z2-z1), WALL_T);
-  const mesh = new THREE.Mesh(new THREE.BoxGeometry(w, wallH, d), wallMat);
+  const dx = x2-x1, dz = z2-z1;
+  const len = Math.max(Math.hypot(dx, dz), WALL_T);
+  const ry = Math.atan2(-dz, dx);
+  const mesh = new THREE.Mesh(new THREE.BoxGeometry(len, wallH, WALL_T), wallMat);
   mesh.position.set((x1+x2)/2, y0 + wallH/2, (z1+z2)/2);
+  mesh.rotation.y = ry;
   mesh.castShadow = mesh.receiveShadow = true;
   scene.add(mesh); solids.push(mesh);
-  const col = {minX:Math.min(x1,x2)-WALL_T/2, maxX:Math.max(x1,x2)+WALL_T/2,
-               minZ:Math.min(z1,z2)-WALL_T/2, maxZ:Math.max(z1,z2)+WALL_T/2, door:null};
-  if(y0 > 0.01 || wallH !== WALL_H) col.band = [y0-1.55, y0+wallH-0.35];
-  colliders.push(col);
+  addRotColliderRad((x1+x2)/2, (z1+z2)/2, ry, len, WALL_T, y0, wallH);
 }
 
 // build a wall run leaving gaps for doors & windows
@@ -2329,10 +2328,10 @@ function addSurface(cx, cz, ry, halfW, halfD, yFn, active){
   const ca = Math.cos(ry||0), sa = Math.sin(ry||0);
   const surface = {cx, cz, ry:ry||0, halfW, halfD, ca, sa, active, yFn, minY:Infinity, maxY:-Infinity,
     low:null, high:null, test(x,z){
-    const dx = x-cx, dz = z-cz;
-    const lx = dx*ca - dz*sa, lz = dx*sa + dz*ca;
-    if(Math.abs(lx) > halfW || Math.abs(lz) > halfD) return null;
-    return yFn(lx, lz);
+    const dx = x-this.cx, dz = z-this.cz;
+    const lx = dx*this.ca - dz*this.sa, lz = dx*this.sa + dz*this.ca;
+    if(Math.abs(lx) > this.halfW || Math.abs(lz) > this.halfD) return null;
+    return this.yFn(lx, lz);
   }};
   for(const lx of [-halfW, 0, halfW]){
     for(const lz of [-halfD, 0, halfD]){
@@ -5760,11 +5759,128 @@ function forgePowerSwitch(x, z, ryDeg, zone, y){
   makePowerSwitch(x, z, (ryDeg||0)*FORGE_DEG, zone, y || 0);
 }
 
+function forgeSavedScale(obj, key){
+  const n = Number(obj && obj[key]);
+  return Number.isFinite(n) ? THREE.MathUtils.clamp(Math.abs(n), 0.05, 50) : 1;
+}
+function forgeScaledPoint(x, z, pivotX, pivotZ, ry, sx, sz){
+  const ca = Math.cos(ry), sa = Math.sin(ry);
+  const dx = x-pivotX, dz = z-pivotZ;
+  const lx = (dx*ca - dz*sa) * sx;
+  const lz = (dx*sa + dz*ca) * sz;
+  return {x:pivotX + lx*ca + lz*sa, z:pivotZ + lz*ca - lx*sa};
+}
+function forgeApplySavedScale(obj, childStart, colliderStart, surfaceStart, terminalStart, windowStart){
+  if(!obj || obj.type === 'wall') return;
+  const sx = forgeSavedScale(obj, 'sx');
+  const sy = forgeSavedScale(obj, 'sy');
+  const sz = forgeSavedScale(obj, 'sz');
+  if(Math.abs(sx-1) < 0.0001 && Math.abs(sy-1) < 0.0001 && Math.abs(sz-1) < 0.0001) return;
+
+  const px = Number(obj.x) || 0;
+  const py = Number(obj.y) || 0;
+  const pz = Number(obj.z) || 0;
+  const ry = (Number(obj.ry) || 0) * FORGE_DEG;
+  const created = scene.children.slice(childStart);
+  if(created.length){
+    const holder = new THREE.Group();
+    holder.position.set(px, py, pz);
+    holder.rotation.y = ry;
+    holder.userData.forgeScaleRoot = true;
+    scene.add(holder);
+    for(const child of created){
+      if(child.parent === scene) holder.attach(child);
+    }
+    holder.scale.set(sx, sy, sz);
+  }
+
+  const scaleY = y => py + (y-py)*sy;
+  for(let i=colliderStart; i<colliders.length; i++){
+    const c = colliders[i];
+    if(!c) continue;
+    if(c.rot){
+      const at = forgeScaledPoint(c.x, c.z, px, pz, ry, sx, sz);
+      c.x = at.x;
+      c.z = at.z;
+      c.halfW *= sx;
+      c.halfD *= sz;
+    } else if(Number.isFinite(c.minX) && Number.isFinite(c.maxX)
+      && Number.isFinite(c.minZ) && Number.isFinite(c.maxZ)){
+      const corners = [
+        forgeScaledPoint(c.minX, c.minZ, px, pz, ry, sx, sz),
+        forgeScaledPoint(c.minX, c.maxZ, px, pz, ry, sx, sz),
+        forgeScaledPoint(c.maxX, c.minZ, px, pz, ry, sx, sz),
+        forgeScaledPoint(c.maxX, c.maxZ, px, pz, ry, sx, sz)
+      ];
+      c.minX = Math.min(...corners.map(p => p.x));
+      c.maxX = Math.max(...corners.map(p => p.x));
+      c.minZ = Math.min(...corners.map(p => p.z));
+      c.maxZ = Math.max(...corners.map(p => p.z));
+    }
+    if(c.band){
+      const a = scaleY(c.band[0]), b = scaleY(c.band[1]);
+      c.band = [Math.min(a,b), Math.max(a,b)];
+    }
+  }
+
+  for(let i=surfaceStart; i<surfaces.length; i++){
+    const s = surfaces[i];
+    if(!s) continue;
+    const at = forgeScaledPoint(s.cx, s.cz, px, pz, ry, sx, sz);
+    const oldYFn = s.yFn;
+    s.cx = at.x;
+    s.cz = at.z;
+    s.halfW *= sx;
+    s.halfD *= sz;
+    s.yFn = (lx, lz) => scaleY(oldYFn(lx/sx, lz/sz));
+    s.minY = Infinity;
+    s.maxY = -Infinity;
+    s.low = null;
+    s.high = null;
+    for(const lx of [-s.halfW, 0, s.halfW]){
+      for(const lz of [-s.halfD, 0, s.halfD]){
+        const y = s.yFn(lx, lz);
+        const wp = surfaceWorldPoint(s, lx, lz);
+        if(y < s.minY){ s.minY = y; s.low = {x:wp.x, z:wp.z, y}; }
+        if(y > s.maxY){ s.maxY = y; s.high = {x:wp.x, z:wp.z, y}; }
+      }
+    }
+  }
+
+  for(let i=terminalStart; i<terminalGlows.length; i++){
+    const glow = terminalGlows[i];
+    if(!glow) continue;
+    const at = forgeScaledPoint(glow.pos.x, glow.pos.z, px, pz, ry, sx, sz);
+    glow.pos.set(at.x, scaleY(glow.pos.y), at.z);
+    const origin = forgeScaledPoint(glow.x, glow.z, px, pz, ry, sx, sz);
+    glow.x = origin.x;
+    glow.y = scaleY(glow.y);
+    glow.z = origin.z;
+  }
+
+  for(let i=windowStart; i<windows.length; i++){
+    const win = windows[i];
+    if(!win) continue;
+    for(const key of ['at','out','in']){
+      if(!Array.isArray(win[key]) || win[key].length < 2) continue;
+      const at = forgeScaledPoint(win[key][0], win[key][1], px, pz, ry, sx, sz);
+      win[key][0] = at.x;
+      win[key][1] = at.z;
+    }
+    if(Number.isFinite(win.y)) win.y = scaleY(win.y);
+  }
+}
+
 // build a saved Forge layout ({app:'dead-game-forge', objects:[...]})
 function buildForge(data){
   const mats = forgeMats();
   for(const obj of (data && data.objects) || []){
     const p = obj.p || {}, ryRad = (obj.ry||0)*FORGE_DEG;
+    const childStart = scene.children.length;
+    const colliderStart = colliders.length;
+    const surfaceStart = surfaces.length;
+    const terminalStart = terminalGlows.length;
+    const windowStart = windows.length;
     try{
       switch(obj.type){
         case 'wall':      addWall(obj.x1, obj.z1, obj.x2, obj.z2, obj.y || 0, obj.h || WALL_H); break;
@@ -5921,7 +6037,8 @@ function buildForge(data){
         case 'power':     forgePowerSwitch(obj.x, obj.z, obj.ry, null, obj.y || 0); break;
         case 'scriptbutton': forgeScriptButton(obj.x, obj.z, obj.ry, p, obj.y || 0); break;
         case 'zone':
-          registerNavZone(p.id, p.name, obj.x, obj.z, p.w, p.d, p.level);
+          registerNavZone(p.id, p.name, obj.x, obj.z,
+            p.w * forgeSavedScale(obj, 'sx'), p.d * forgeSavedScale(obj, 'sz'), p.level);
           break;
         case 'navportal':
           registerNavPortal(p.zoneA, p.zoneB, obj.x, obj.z, p.kind || 'open', null);
@@ -5930,6 +6047,7 @@ function buildForge(data){
           registerNavSpawn(obj.x, obj.z, p.zone, p.weight);
           break;
       }
+      forgeApplySavedScale(obj, childStart, colliderStart, surfaceStart, terminalStart, windowStart);
     } catch(err){
       console.warn('forge object skipped', obj && obj.type, err);
     }

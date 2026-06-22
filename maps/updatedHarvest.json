@@ -1,0 +1,3731 @@
+{
+ "app": "dead-game-forge",
+ "version": 1,
+ "sky": {
+  "preset": "default"
+ },
+ "spawn": [
+  0,
+  0,
+  180
+ ],
+ "spawns": [
+  [
+   0,
+   0,
+   180
+  ]
+ ],
+ "nav": {
+  "zones": [
+   {
+    "id": "lobby",
+    "name": "Lobby",
+    "x": 0,
+    "z": -14,
+    "w": 16,
+    "d": 12,
+    "level": "all"
+   },
+   {
+    "id": "armory",
+    "name": "Armory",
+    "x": -15,
+    "z": -14,
+    "w": 14,
+    "d": 12,
+    "level": "all"
+   },
+   {
+    "id": "office",
+    "name": "Office",
+    "x": 15,
+    "z": -14,
+    "w": 14,
+    "d": 12,
+    "level": "all"
+   },
+   {
+    "id": "east_hall",
+    "name": "East Hall",
+    "x": 15,
+    "z": -26,
+    "w": 14,
+    "d": 12,
+    "level": "all"
+   },
+   {
+    "id": "stairwell",
+    "name": "Overlook Stairwell",
+    "x": 4,
+    "z": -26,
+    "w": 3,
+    "d": 12,
+    "level": "all"
+   },
+   {
+    "id": "storage",
+    "name": "Storage",
+    "x": 15,
+    "z": -38,
+    "w": 14,
+    "d": 12,
+    "level": "all"
+   },
+   {
+    "id": "generator",
+    "name": "Generator Room",
+    "x": 0,
+    "z": -38,
+    "w": 16,
+    "d": 12,
+    "level": "all"
+   },
+   {
+    "id": "west_store",
+    "name": "West Store",
+    "x": -15,
+    "z": -38,
+    "w": 14,
+    "d": 12,
+    "level": "all"
+   }
+  ],
+  "portals": [
+   {
+    "x": 0,
+    "z": -8,
+    "a": "outside",
+    "b": "lobby",
+    "kind": "door"
+   },
+   {
+    "x": -8,
+    "z": -14,
+    "a": "lobby",
+    "b": "armory",
+    "kind": "door"
+   },
+   {
+    "x": 8,
+    "z": -14,
+    "a": "lobby",
+    "b": "office",
+    "kind": "door"
+   },
+   {
+    "x": 4,
+    "z": -20,
+    "a": "lobby",
+    "b": "stairwell",
+    "kind": "door"
+   },
+   {
+    "x": 15,
+    "z": -20,
+    "a": "office",
+    "b": "east_hall",
+    "kind": "door"
+   },
+   {
+    "x": 15,
+    "z": -32,
+    "a": "east_hall",
+    "b": "storage",
+    "kind": "door"
+   },
+   {
+    "x": 8,
+    "z": -38,
+    "a": "storage",
+    "b": "generator",
+    "kind": "door"
+   },
+   {
+    "x": -8,
+    "z": -38,
+    "a": "generator",
+    "b": "west_store",
+    "kind": "door"
+   },
+   {
+    "x": -5,
+    "z": -8,
+    "a": "outside",
+    "b": "lobby",
+    "kind": "window"
+   },
+   {
+    "x": 5,
+    "z": -8,
+    "a": "outside",
+    "b": "lobby",
+    "kind": "window"
+   },
+   {
+    "x": 0,
+    "z": -20,
+    "a": "outside",
+    "b": "lobby",
+    "kind": "window"
+   },
+   {
+    "x": -15,
+    "z": -20,
+    "a": "outside",
+    "b": "armory",
+    "kind": "window"
+   },
+   {
+    "x": -22,
+    "z": -14,
+    "a": "outside",
+    "b": "armory",
+    "kind": "window"
+   },
+   {
+    "x": 22,
+    "z": -14,
+    "a": "outside",
+    "b": "office",
+    "kind": "window"
+   },
+   {
+    "x": 22,
+    "z": -26,
+    "a": "outside",
+    "b": "east_hall",
+    "kind": "window"
+   },
+   {
+    "x": 8,
+    "z": -26,
+    "a": "outside",
+    "b": "east_hall",
+    "kind": "window"
+   },
+   {
+    "x": 15,
+    "z": -44,
+    "a": "outside",
+    "b": "storage",
+    "kind": "window"
+   },
+   {
+    "x": -4,
+    "z": -44,
+    "a": "outside",
+    "b": "generator",
+    "kind": "window"
+   },
+   {
+    "x": 0,
+    "z": -32,
+    "a": "outside",
+    "b": "generator",
+    "kind": "window"
+   },
+   {
+    "x": -15,
+    "z": -44,
+    "a": "outside",
+    "b": "west_store",
+    "kind": "window"
+   },
+   {
+    "x": -22,
+    "z": -38,
+    "a": "outside",
+    "b": "west_store",
+    "kind": "window"
+   },
+   {
+    "x": -15,
+    "z": -32,
+    "a": "outside",
+    "b": "west_store",
+    "kind": "window"
+   },
+   {
+    "x": 2,
+    "z": -44,
+    "a": "outside",
+    "b": "room1",
+    "kind": "door"
+   },
+   {
+    "x": -22,
+    "z": -10,
+    "a": "outside",
+    "b": "room1",
+    "kind": "door"
+   },
+   {
+    "x": -35,
+    "z": -12.1,
+    "a": "outside",
+    "b": "room1",
+    "kind": "window"
+   },
+   {
+    "x": -41.4,
+    "z": 3,
+    "a": "outside",
+    "b": "room1",
+    "kind": "window"
+   },
+   {
+    "x": -21.4,
+    "z": 5.4,
+    "a": "outside",
+    "b": "room1",
+    "kind": "window"
+   },
+   {
+    "x": -29.4,
+    "z": 6.9,
+    "a": "outside",
+    "b": "room1",
+    "kind": "window"
+   },
+   {
+    "x": 32.8,
+    "z": 36.6,
+    "a": "outside",
+    "b": "room1",
+    "kind": "door"
+   }
+  ],
+  "zombieSpawns": [
+   {
+    "x": -5,
+    "z": -5.5,
+    "zone": "outside",
+    "weight": 1
+   },
+   {
+    "x": 5,
+    "z": -5.5,
+    "zone": "outside",
+    "weight": 1
+   },
+   {
+    "x": 0,
+    "z": -22.5,
+    "zone": "outside",
+    "weight": 1
+   },
+   {
+    "x": -15,
+    "z": -22.5,
+    "zone": "outside",
+    "weight": 1
+   },
+   {
+    "x": -24.5,
+    "z": -14,
+    "zone": "outside",
+    "weight": 1
+   },
+   {
+    "x": 24.5,
+    "z": -14,
+    "zone": "outside",
+    "weight": 1
+   },
+   {
+    "x": 23.6,
+    "z": -26.2,
+    "zone": "outside",
+    "weight": 1
+   },
+   {
+    "x": 6.2,
+    "z": -26,
+    "zone": "outside",
+    "weight": 1
+   },
+   {
+    "x": 15,
+    "z": -46.5,
+    "zone": "outside",
+    "weight": 1
+   },
+   {
+    "x": -4,
+    "z": -46.5,
+    "zone": "outside",
+    "weight": 1
+   },
+   {
+    "x": 0,
+    "z": -29.5,
+    "zone": "outside",
+    "weight": 1
+   },
+   {
+    "x": -15,
+    "z": -46.5,
+    "zone": "outside",
+    "weight": 1
+   },
+   {
+    "x": -24.5,
+    "z": -38,
+    "zone": "outside",
+    "weight": 1
+   },
+   {
+    "x": -15,
+    "z": -29.5,
+    "zone": "outside",
+    "weight": 1
+   },
+   {
+    "x": -35,
+    "z": -14.8,
+    "zone": "outside",
+    "weight": 1
+   },
+   {
+    "x": -43.9,
+    "z": 3,
+    "zone": "outside",
+    "weight": 1
+   },
+   {
+    "x": -30.5,
+    "z": 8.5,
+    "zone": "outside",
+    "weight": 1
+   },
+   {
+    "x": -19.1,
+    "z": 4.8,
+    "zone": "outside",
+    "weight": 1
+   }
+  ]
+ },
+ "objects": [
+  {
+   "id": 1,
+   "type": "platform",
+   "x": 0,
+   "y": 0.1,
+   "z": -26,
+   "ry": 0,
+   "p": {
+    "w": 45,
+    "d": 37,
+    "thick": 0.14
+   }
+  },
+  {
+   "id": 2,
+   "type": "platform",
+   "x": -7,
+   "y": 0.18,
+   "z": -26,
+   "ry": 0,
+   "p": {
+    "w": 29.6,
+    "d": 11.6,
+    "thick": 0.18
+   }
+  },
+  {
+   "id": 3,
+   "type": "roofslab",
+   "x": 0,
+   "y": 5.3,
+   "z": -14,
+   "ry": 0,
+   "p": {
+    "w": 45,
+    "d": 12.6,
+    "thick": 0.5,
+    "over": 0,
+    "parapet": 0.7,
+    "matName": "wall",
+    "walkable": "yes"
+   }
+  },
+  {
+   "id": 5,
+   "type": "roofslab",
+   "x": 15,
+   "y": 5.3,
+   "z": -26,
+   "ry": 0,
+   "p": {
+    "w": 14.6,
+    "d": 12.6,
+    "thick": 0.5,
+    "over": 0,
+    "parapet": 0.7,
+    "matName": "wall",
+    "walkable": "yes"
+   }
+  },
+  {
+   "id": 6,
+   "type": "platform",
+   "x": 0,
+   "y": 0.22,
+   "z": -6.4,
+   "ry": 0,
+   "p": {
+    "w": 7,
+    "d": 3.4,
+    "thick": 0.22
+   }
+  },
+  {
+   "id": 7,
+   "type": "box",
+   "x": 0,
+   "y": 4.75,
+   "z": -6.4,
+   "ry": 0,
+   "p": {
+    "w": 7,
+    "h": 0.3,
+    "d": 3.2,
+    "matName": "wall",
+    "collide": "yes"
+   }
+  },
+  {
+   "id": 8,
+   "type": "vpipe",
+   "x": -2.9,
+   "y": 0,
+   "z": -5.3,
+   "ry": 0,
+   "p": {
+    "h": 4.8,
+    "r": 0.18,
+    "matName": "trim"
+   }
+  },
+  {
+   "id": 9,
+   "type": "vpipe",
+   "x": 2.9,
+   "y": 0,
+   "z": -5.3,
+   "ry": 0,
+   "p": {
+    "h": 4.8,
+    "r": 0.18,
+    "matName": "trim"
+   }
+  },
+  {
+   "id": 10,
+   "type": "sign",
+   "x": 0.3,
+   "y": 5.8,
+   "z": -7.4,
+   "ry": 0,
+   "p": {
+    "text": "HARVEST PROCESSING CO.",
+    "color": "cfc7a8",
+    "w": 13,
+    "sides": "one"
+   }
+  },
+  {
+   "id": 11,
+   "type": "wall",
+   "x1": -22,
+   "z1": -8,
+   "x2": -6.2,
+   "z2": -8,
+   "y": 0,
+   "h": 4.8
+  },
+  {
+   "id": 12,
+   "type": "wall",
+   "x1": -3.8,
+   "z1": -8,
+   "x2": -1.5,
+   "z2": -8,
+   "y": 0,
+   "h": 4.8
+  },
+  {
+   "id": 13,
+   "type": "wall",
+   "x1": 1.5,
+   "z1": -8,
+   "x2": 3.8,
+   "z2": -8,
+   "y": 0,
+   "h": 4.8
+  },
+  {
+   "id": 14,
+   "type": "wall",
+   "x1": 6.2,
+   "z1": -8,
+   "x2": 22,
+   "z2": -8,
+   "y": 0,
+   "h": 4.8
+  },
+  {
+   "id": 15,
+   "type": "wall",
+   "x1": -22,
+   "z1": -44,
+   "x2": -16.2,
+   "z2": -44,
+   "y": 0,
+   "h": 4.8
+  },
+  {
+   "id": 16,
+   "type": "wall",
+   "x1": -13.8,
+   "z1": -44,
+   "x2": -5.2,
+   "z2": -44,
+   "y": 0,
+   "h": 4.8
+  },
+  {
+   "id": 17,
+   "type": "wall",
+   "x1": -2.8,
+   "z1": -44,
+   "x2": 0.5,
+   "z2": -44,
+   "y": 0,
+   "h": 4.8
+  },
+  {
+   "id": 18,
+   "type": "wall",
+   "x1": 16.2,
+   "z1": -44,
+   "x2": 22,
+   "z2": -44,
+   "y": 0,
+   "h": 4.8
+  },
+  {
+   "id": 19,
+   "type": "wall",
+   "x1": -22,
+   "z1": -44,
+   "x2": -22,
+   "z2": -39.2,
+   "y": 0,
+   "h": 4.8
+  },
+  {
+   "id": 20,
+   "type": "wall",
+   "x1": -22,
+   "z1": -36.8,
+   "x2": -22,
+   "z2": -15.2,
+   "y": 0,
+   "h": 4.8
+  },
+  {
+   "id": 22,
+   "type": "wall",
+   "x1": 22,
+   "z1": -44,
+   "x2": 22,
+   "z2": -27.2,
+   "y": 0,
+   "h": 4.8
+  },
+  {
+   "id": 23,
+   "type": "wall",
+   "x1": 22,
+   "z1": -24.8,
+   "x2": 22,
+   "z2": -15.2,
+   "y": 0,
+   "h": 4.8
+  },
+  {
+   "id": 24,
+   "type": "wall",
+   "x1": 22,
+   "z1": -12.8,
+   "x2": 22,
+   "z2": -8,
+   "y": 0,
+   "h": 4.8
+  },
+  {
+   "id": 25,
+   "type": "wall",
+   "x1": -8,
+   "z1": -44,
+   "x2": -8,
+   "z2": -39.5,
+   "y": 0,
+   "h": 4.8
+  },
+  {
+   "id": 26,
+   "type": "wall",
+   "x1": -8,
+   "z1": -36.5,
+   "x2": -8,
+   "z2": -15.5,
+   "y": 0,
+   "h": 4.8
+  },
+  {
+   "id": 27,
+   "type": "wall",
+   "x1": -8,
+   "z1": -12.5,
+   "x2": -8,
+   "z2": -8,
+   "y": 0,
+   "h": 4.8
+  },
+  {
+   "id": 28,
+   "type": "wall",
+   "x1": 8,
+   "z1": -44,
+   "x2": 8,
+   "z2": -39.5,
+   "y": 0,
+   "h": 4.8
+  },
+  {
+   "id": 29,
+   "type": "wall",
+   "x1": 8,
+   "z1": -36.5,
+   "x2": 8,
+   "z2": -27.2,
+   "y": 0,
+   "h": 4.8
+  },
+  {
+   "id": 30,
+   "type": "wall",
+   "x1": 8,
+   "z1": -24.8,
+   "x2": 8,
+   "z2": -15.5,
+   "y": 0,
+   "h": 4.8
+  },
+  {
+   "id": 31,
+   "type": "wall",
+   "x1": 8,
+   "z1": -12.5,
+   "x2": 8,
+   "z2": -8,
+   "y": 0,
+   "h": 4.8
+  },
+  {
+   "id": 32,
+   "type": "wall",
+   "x1": -22,
+   "z1": -20,
+   "x2": -16.2,
+   "z2": -20,
+   "y": 0,
+   "h": 4.8
+  },
+  {
+   "id": 33,
+   "type": "wall",
+   "x1": -13.8,
+   "z1": -20,
+   "x2": -1.2,
+   "z2": -20,
+   "y": 0,
+   "h": 4.8
+  },
+  {
+   "id": 34,
+   "type": "wall",
+   "x1": 1.2,
+   "z1": -20,
+   "x2": 2.65,
+   "z2": -20,
+   "y": 0,
+   "h": 4.8
+  },
+  {
+   "id": 35,
+   "type": "wall",
+   "x1": 5.35,
+   "z1": -20,
+   "x2": 13.5,
+   "z2": -20,
+   "y": 0,
+   "h": 4.8
+  },
+  {
+   "id": 36,
+   "type": "wall",
+   "x1": 16.488,
+   "z1": -20,
+   "x2": 22.113,
+   "z2": -20,
+   "y": 0,
+   "h": 4.8
+  },
+  {
+   "id": 37,
+   "type": "wall",
+   "x1": -22,
+   "z1": -32,
+   "x2": -16.2,
+   "z2": -32,
+   "y": 0,
+   "h": 4.8
+  },
+  {
+   "id": 38,
+   "type": "wall",
+   "x1": -13.8,
+   "z1": -32,
+   "x2": -1.2,
+   "z2": -32,
+   "y": 0,
+   "h": 4.8
+  },
+  {
+   "id": 39,
+   "type": "wall",
+   "x1": 1.2,
+   "z1": -32,
+   "x2": 13.5,
+   "z2": -32,
+   "y": 0,
+   "h": 4.8
+  },
+  {
+   "id": 40,
+   "type": "wall",
+   "x1": 16.5,
+   "z1": -32,
+   "x2": 22,
+   "z2": -32,
+   "y": 0,
+   "h": 4.8
+  },
+  {
+   "id": 41,
+   "type": "box",
+   "x": -22,
+   "y": 0,
+   "z": -8,
+   "ry": 0,
+   "p": {
+    "w": 1.1,
+    "h": 5.3,
+    "d": 1.1,
+    "matName": "trim",
+    "collide": "yes"
+   }
+  },
+  {
+   "id": 42,
+   "type": "box",
+   "x": 22,
+   "y": 0,
+   "z": -8,
+   "ry": 0,
+   "p": {
+    "w": 1.1,
+    "h": 5.3,
+    "d": 1.1,
+    "matName": "trim",
+    "collide": "yes"
+   }
+  },
+  {
+   "id": 43,
+   "type": "box",
+   "x": -22,
+   "y": 0,
+   "z": -44,
+   "ry": 0,
+   "p": {
+    "w": 1.1,
+    "h": 5.3,
+    "d": 1.1,
+    "matName": "trim",
+    "collide": "yes"
+   }
+  },
+  {
+   "id": 44,
+   "type": "box",
+   "x": 22,
+   "y": 0,
+   "z": -44,
+   "ry": 0,
+   "p": {
+    "w": 1.1,
+    "h": 5.3,
+    "d": 1.1,
+    "matName": "trim",
+    "collide": "yes"
+   }
+  },
+  {
+   "id": 45,
+   "type": "box",
+   "x": -8,
+   "y": 0,
+   "z": -8,
+   "ry": 0,
+   "p": {
+    "w": 1.1,
+    "h": 5.3,
+    "d": 1.1,
+    "matName": "trim",
+    "collide": "yes"
+   }
+  },
+  {
+   "id": 46,
+   "type": "box",
+   "x": 8,
+   "y": 0,
+   "z": -8,
+   "ry": 0,
+   "p": {
+    "w": 1.1,
+    "h": 5.3,
+    "d": 1.1,
+    "matName": "trim",
+    "collide": "yes"
+   }
+  },
+  {
+   "id": 47,
+   "type": "zone",
+   "x": 0,
+   "y": 0,
+   "z": -14,
+   "ry": 0,
+   "p": {
+    "id": "lobby",
+    "name": "Lobby",
+    "w": 16,
+    "d": 12,
+    "level": "all"
+   }
+  },
+  {
+   "id": 48,
+   "type": "zone",
+   "x": -15,
+   "y": 0,
+   "z": -14,
+   "ry": 0,
+   "p": {
+    "id": "armory",
+    "name": "Armory",
+    "w": 14,
+    "d": 12,
+    "level": "all"
+   }
+  },
+  {
+   "id": 49,
+   "type": "zone",
+   "x": 15,
+   "y": 0,
+   "z": -14,
+   "ry": 0,
+   "p": {
+    "id": "office",
+    "name": "Office",
+    "w": 14,
+    "d": 12,
+    "level": "all"
+   }
+  },
+  {
+   "id": 50,
+   "type": "zone",
+   "x": 15,
+   "y": 0,
+   "z": -26,
+   "ry": 0,
+   "p": {
+    "id": "east_hall",
+    "name": "East Hall",
+    "w": 14,
+    "d": 12,
+    "level": "all"
+   }
+  },
+  {
+   "id": 51,
+   "type": "zone",
+   "x": 4,
+   "y": 0,
+   "z": -26,
+   "ry": 0,
+   "p": {
+    "id": "stairwell",
+    "name": "Overlook Stairwell",
+    "w": 3,
+    "d": 12,
+    "level": "all"
+   }
+  },
+  {
+   "id": 52,
+   "type": "zone",
+   "x": 15,
+   "y": 0,
+   "z": -38,
+   "ry": 0,
+   "p": {
+    "id": "storage",
+    "name": "Storage",
+    "w": 14,
+    "d": 12,
+    "level": "all"
+   }
+  },
+  {
+   "id": 53,
+   "type": "zone",
+   "x": 0,
+   "y": 0,
+   "z": -38,
+   "ry": 0,
+   "p": {
+    "id": "generator",
+    "name": "Generator Room",
+    "w": 16,
+    "d": 12,
+    "level": "all"
+   }
+  },
+  {
+   "id": 54,
+   "type": "zone",
+   "x": -15,
+   "y": 0,
+   "z": -38,
+   "ry": 0,
+   "p": {
+    "id": "west_store",
+    "name": "West Store",
+    "w": 14,
+    "d": 12,
+    "level": "all"
+   }
+  },
+  {
+   "id": 55,
+   "type": "door",
+   "x": 0,
+   "y": 0,
+   "z": -8,
+   "ry": 0,
+   "p": {
+    "name": "FRONT DOOR",
+    "cost": 1000,
+    "axis": "x",
+    "zoneA": "outside",
+    "zoneB": "lobby",
+    "requiresPower": "no"
+   }
+  },
+  {
+   "id": 56,
+   "type": "door",
+   "x": -8,
+   "y": 0,
+   "z": -14,
+   "ry": 0,
+   "p": {
+    "name": "ARMORY",
+    "cost": 1250,
+    "axis": "z",
+    "zoneA": "lobby",
+    "zoneB": "armory",
+    "requiresPower": "no"
+   }
+  },
+  {
+   "id": 57,
+   "type": "door",
+   "x": 8,
+   "y": 0,
+   "z": -14,
+   "ry": 180,
+   "p": {
+    "name": "OFFICE",
+    "cost": 1250,
+    "axis": "z",
+    "zoneA": "lobby",
+    "zoneB": "office",
+    "requiresPower": "no"
+   }
+  },
+  {
+   "id": 58,
+   "type": "door",
+   "x": 4,
+   "y": 0,
+   "z": -20,
+   "ry": 0,
+   "p": {
+    "name": "OVERLOOK ACCESS",
+    "cost": 5000,
+    "axis": "x",
+    "zoneA": "lobby",
+    "zoneB": "stairwell",
+    "requiresPower": "no"
+   }
+  },
+  {
+   "id": 59,
+   "type": "door",
+   "x": 15,
+   "y": 0,
+   "z": -20,
+   "ry": 0,
+   "p": {
+    "name": "EAST HALL",
+    "cost": 1500,
+    "axis": "x",
+    "zoneA": "office",
+    "zoneB": "east_hall",
+    "requiresPower": "no"
+   }
+  },
+  {
+   "id": 60,
+   "type": "door",
+   "x": 15,
+   "y": 0,
+   "z": -32,
+   "ry": 0,
+   "p": {
+    "name": "STORAGE",
+    "cost": 2250,
+    "axis": "x",
+    "zoneA": "east_hall",
+    "zoneB": "storage",
+    "requiresPower": "no"
+   }
+  },
+  {
+   "id": 61,
+   "type": "door",
+   "x": 8,
+   "y": 0,
+   "z": -38,
+   "ry": 0,
+   "p": {
+    "name": "GENERATOR ROOM",
+    "cost": 2250,
+    "axis": "z",
+    "zoneA": "storage",
+    "zoneB": "generator",
+    "requiresPower": "no"
+   }
+  },
+  {
+   "id": 62,
+   "type": "door",
+   "x": -8,
+   "y": 0,
+   "z": -38,
+   "ry": 0,
+   "p": {
+    "name": "WEST STORE",
+    "cost": 2250,
+    "axis": "z",
+    "zoneA": "generator",
+    "zoneB": "west_store",
+    "requiresPower": "no"
+   }
+  },
+  {
+   "id": 63,
+   "type": "zwindow",
+   "x": -5,
+   "y": 0,
+   "z": -8,
+   "ry": 0,
+   "p": {
+    "axis": "x",
+    "side": "+",
+    "zoneA": "outside",
+    "zoneB": "lobby",
+    "boards": 4,
+    "collide": "yes"
+   }
+  },
+  {
+   "id": 64,
+   "type": "zombiespawn",
+   "x": -5,
+   "y": 0,
+   "z": -5.5,
+   "ry": 0,
+   "p": {
+    "zone": "outside",
+    "weight": 1
+   }
+  },
+  {
+   "id": 65,
+   "type": "zwindow",
+   "x": 5,
+   "y": 0,
+   "z": -8,
+   "ry": 0,
+   "p": {
+    "axis": "x",
+    "side": "+",
+    "zoneA": "outside",
+    "zoneB": "lobby",
+    "boards": 4,
+    "collide": "yes"
+   }
+  },
+  {
+   "id": 66,
+   "type": "zombiespawn",
+   "x": 5,
+   "y": 0,
+   "z": -5.5,
+   "ry": 0,
+   "p": {
+    "zone": "outside",
+    "weight": 1
+   }
+  },
+  {
+   "id": 67,
+   "type": "zwindow",
+   "x": 0,
+   "y": 0,
+   "z": -20,
+   "ry": 0,
+   "p": {
+    "axis": "x",
+    "side": "-",
+    "zoneA": "outside",
+    "zoneB": "lobby",
+    "boards": 4,
+    "collide": "yes"
+   }
+  },
+  {
+   "id": 68,
+   "type": "zombiespawn",
+   "x": 0,
+   "y": 0,
+   "z": -22.5,
+   "ry": 0,
+   "p": {
+    "zone": "outside",
+    "weight": 1
+   }
+  },
+  {
+   "id": 69,
+   "type": "zwindow",
+   "x": -15,
+   "y": 0,
+   "z": -20,
+   "ry": 0,
+   "p": {
+    "axis": "x",
+    "side": "-",
+    "zoneA": "outside",
+    "zoneB": "armory",
+    "boards": 4,
+    "collide": "yes"
+   }
+  },
+  {
+   "id": 70,
+   "type": "zombiespawn",
+   "x": -15,
+   "y": 0,
+   "z": -22.5,
+   "ry": 0,
+   "p": {
+    "zone": "outside",
+    "weight": 1
+   }
+  },
+  {
+   "id": 71,
+   "type": "zwindow",
+   "x": -22,
+   "y": 0,
+   "z": -14,
+   "ry": 0,
+   "p": {
+    "axis": "z",
+    "side": "-",
+    "zoneA": "outside",
+    "zoneB": "armory",
+    "boards": 4,
+    "collide": "yes"
+   }
+  },
+  {
+   "id": 72,
+   "type": "zombiespawn",
+   "x": -24.5,
+   "y": 0,
+   "z": -14,
+   "ry": 0,
+   "p": {
+    "zone": "outside",
+    "weight": 1
+   }
+  },
+  {
+   "id": 73,
+   "type": "zwindow",
+   "x": 22,
+   "y": 0,
+   "z": -14,
+   "ry": 0,
+   "p": {
+    "axis": "z",
+    "side": "+",
+    "zoneA": "outside",
+    "zoneB": "office",
+    "boards": 4,
+    "collide": "yes"
+   }
+  },
+  {
+   "id": 74,
+   "type": "zombiespawn",
+   "x": 24.5,
+   "y": 0,
+   "z": -14,
+   "ry": 0,
+   "p": {
+    "zone": "outside",
+    "weight": 1
+   }
+  },
+  {
+   "id": 75,
+   "type": "zwindow",
+   "x": 22,
+   "y": 0,
+   "z": -26,
+   "ry": 0,
+   "p": {
+    "axis": "z",
+    "side": "+",
+    "zoneA": "outside",
+    "zoneB": "east_hall",
+    "boards": 4,
+    "collide": "yes"
+   }
+  },
+  {
+   "id": 76,
+   "type": "zombiespawn",
+   "x": 23.6,
+   "y": 0,
+   "z": -26.2,
+   "ry": 0,
+   "p": {
+    "zone": "outside",
+    "weight": 1
+   }
+  },
+  {
+   "id": 77,
+   "type": "zwindow",
+   "x": 8,
+   "y": 0,
+   "z": -26,
+   "ry": 0,
+   "p": {
+    "axis": "z",
+    "side": "-",
+    "zoneA": "outside",
+    "zoneB": "east_hall",
+    "boards": 4,
+    "collide": "yes"
+   }
+  },
+  {
+   "id": 78,
+   "type": "zombiespawn",
+   "x": 6.2,
+   "y": 0,
+   "z": -26,
+   "ry": 0,
+   "p": {
+    "zone": "outside",
+    "weight": 1
+   }
+  },
+  {
+   "id": 79,
+   "type": "zwindow",
+   "x": 15,
+   "y": 0,
+   "z": -44,
+   "ry": 0,
+   "p": {
+    "axis": "x",
+    "side": "-",
+    "zoneA": "outside",
+    "zoneB": "storage",
+    "boards": 4,
+    "collide": "yes"
+   }
+  },
+  {
+   "id": 80,
+   "type": "zombiespawn",
+   "x": 15,
+   "y": 0,
+   "z": -46.5,
+   "ry": 0,
+   "p": {
+    "zone": "outside",
+    "weight": 1
+   }
+  },
+  {
+   "id": 81,
+   "type": "zwindow",
+   "x": -4,
+   "y": 0,
+   "z": -44,
+   "ry": 0,
+   "p": {
+    "axis": "x",
+    "side": "-",
+    "zoneA": "outside",
+    "zoneB": "generator",
+    "boards": 4,
+    "collide": "yes"
+   }
+  },
+  {
+   "id": 82,
+   "type": "zombiespawn",
+   "x": -4,
+   "y": 0,
+   "z": -46.5,
+   "ry": 0,
+   "p": {
+    "zone": "outside",
+    "weight": 1
+   }
+  },
+  {
+   "id": 83,
+   "type": "zwindow",
+   "x": 0,
+   "y": 0,
+   "z": -32,
+   "ry": 0,
+   "p": {
+    "axis": "x",
+    "side": "+",
+    "zoneA": "outside",
+    "zoneB": "generator",
+    "boards": 4,
+    "collide": "yes"
+   }
+  },
+  {
+   "id": 84,
+   "type": "zombiespawn",
+   "x": 0,
+   "y": 0,
+   "z": -29.5,
+   "ry": 0,
+   "p": {
+    "zone": "outside",
+    "weight": 1
+   }
+  },
+  {
+   "id": 85,
+   "type": "zwindow",
+   "x": -15,
+   "y": 0,
+   "z": -44,
+   "ry": 0,
+   "p": {
+    "axis": "x",
+    "side": "-",
+    "zoneA": "outside",
+    "zoneB": "west_store",
+    "boards": 4,
+    "collide": "yes"
+   }
+  },
+  {
+   "id": 86,
+   "type": "zombiespawn",
+   "x": -15,
+   "y": 0,
+   "z": -46.5,
+   "ry": 0,
+   "p": {
+    "zone": "outside",
+    "weight": 1
+   }
+  },
+  {
+   "id": 87,
+   "type": "zwindow",
+   "x": -22,
+   "y": 0,
+   "z": -38,
+   "ry": 0,
+   "p": {
+    "axis": "z",
+    "side": "-",
+    "zoneA": "outside",
+    "zoneB": "west_store",
+    "boards": 4,
+    "collide": "yes"
+   }
+  },
+  {
+   "id": 88,
+   "type": "zombiespawn",
+   "x": -24.5,
+   "y": 0,
+   "z": -38,
+   "ry": 0,
+   "p": {
+    "zone": "outside",
+    "weight": 1
+   }
+  },
+  {
+   "id": 89,
+   "type": "zwindow",
+   "x": -15,
+   "y": 0,
+   "z": -32,
+   "ry": 0,
+   "p": {
+    "axis": "x",
+    "side": "+",
+    "zoneA": "outside",
+    "zoneB": "west_store",
+    "boards": 4,
+    "collide": "yes"
+   }
+  },
+  {
+   "id": 90,
+   "type": "zombiespawn",
+   "x": -15,
+   "y": 0,
+   "z": -29.5,
+   "ry": 0,
+   "p": {
+    "zone": "outside",
+    "weight": 1
+   }
+  },
+  {
+   "id": 91,
+   "type": "platform",
+   "x": 0,
+   "y": 5.15,
+   "z": -31.4,
+   "ry": 0,
+   "p": {
+    "w": 15.4,
+    "d": 3,
+    "thick": 0.18
+   },
+   "sx": 1,
+   "sy": 1,
+   "sz": 1.5
+  },
+  {
+   "id": 92,
+   "type": "stairs",
+   "x": 4,
+   "y": 0,
+   "z": -21.1,
+   "ry": 0,
+   "p": {
+    "steps": 22,
+    "stepW": 2.55,
+    "stepH": 0.234,
+    "stepD": 0.37
+   },
+   "sx": 1,
+   "sy": 1,
+   "sz": 1
+  },
+  {
+   "id": 93,
+   "type": "railing",
+   "x": 0,
+   "y": 5.15,
+   "z": -33.6,
+   "ry": 0,
+   "p": {
+    "len": 15.4,
+    "h": 1.05,
+    "posts": 10,
+    "matName": "rust"
+   },
+   "sx": 1,
+   "sy": 1,
+   "sz": 1
+  },
+  {
+   "id": 95,
+   "type": "railing",
+   "x": 7.7,
+   "y": 5.15,
+   "z": -31.4,
+   "ry": 90,
+   "p": {
+    "len": 4.25,
+    "h": 1.05,
+    "posts": 4,
+    "matName": "rust"
+   },
+   "sx": 1,
+   "sy": 1,
+   "sz": 1
+  },
+  {
+   "id": 98,
+   "type": "lamp",
+   "x": 0,
+   "y": 4.8,
+   "z": -14,
+   "ry": 0,
+   "p": {}
+  },
+  {
+   "id": 99,
+   "type": "lamp",
+   "x": -15,
+   "y": 4.8,
+   "z": -14,
+   "ry": 0,
+   "p": {}
+  },
+  {
+   "id": 100,
+   "type": "lamp",
+   "x": 15,
+   "y": 4.8,
+   "z": -14,
+   "ry": 0,
+   "p": {}
+  },
+  {
+   "id": 101,
+   "type": "lamp",
+   "x": 15,
+   "y": 4.8,
+   "z": -26,
+   "ry": 0,
+   "p": {}
+  },
+  {
+   "id": 102,
+   "type": "lamp",
+   "x": 15,
+   "y": 4.8,
+   "z": -38,
+   "ry": 0,
+   "p": {}
+  },
+  {
+   "id": 103,
+   "type": "lamp",
+   "x": 0,
+   "y": 4.7,
+   "z": -38,
+   "ry": 0,
+   "p": {}
+  },
+  {
+   "id": 104,
+   "type": "lamp",
+   "x": -15,
+   "y": 9.1,
+   "z": -38,
+   "ry": 0,
+   "p": {}
+  },
+  {
+   "id": 105,
+   "type": "lamp",
+   "x": 0,
+   "y": 3,
+   "z": -6.4,
+   "ry": 0,
+   "p": {}
+  },
+  {
+   "id": 106,
+   "type": "desk",
+   "x": -7.2,
+   "y": 0,
+   "z": -10.3,
+   "ry": 90,
+   "p": {}
+  },
+  {
+   "id": 107,
+   "type": "desk",
+   "x": 13.5,
+   "y": 0,
+   "z": -13,
+   "ry": 0,
+   "p": {}
+  },
+  {
+   "id": 108,
+   "type": "desk",
+   "x": 18.5,
+   "y": 0,
+   "z": -17.5,
+   "ry": 180,
+   "p": {}
+  },
+  {
+   "id": 109,
+   "type": "shelf",
+   "x": -19,
+   "y": 0,
+   "z": -19.1,
+   "ry": 0,
+   "p": {}
+  },
+  {
+   "id": 110,
+   "type": "shelf",
+   "x": 10.8,
+   "y": 0,
+   "z": -43.2,
+   "ry": 0,
+   "p": {}
+  },
+  {
+   "id": 111,
+   "type": "shelf",
+   "x": 19.5,
+   "y": 0,
+   "z": -43.2,
+   "ry": 0,
+   "p": {}
+  },
+  {
+   "id": 112,
+   "type": "crate",
+   "x": 6.2,
+   "y": 0,
+   "z": -15.7,
+   "ry": 23,
+   "p": {
+    "s": 1.2
+   }
+  },
+  {
+   "id": 113,
+   "type": "crate",
+   "x": -13.6,
+   "y": 0,
+   "z": -15.4,
+   "ry": 11,
+   "p": {
+    "s": 1.1
+   }
+  },
+  {
+   "id": 114,
+   "type": "crate",
+   "x": 19.8,
+   "y": 0,
+   "z": -34.5,
+   "ry": 17,
+   "p": {
+    "s": 1.3
+   }
+  },
+  {
+   "id": 115,
+   "type": "crate",
+   "x": -18,
+   "y": 0,
+   "z": -42,
+   "ry": 11,
+   "p": {
+    "s": 1.4
+   }
+  },
+  {
+   "id": 116,
+   "type": "crate",
+   "x": -16.7,
+   "y": 0,
+   "z": -40.6,
+   "ry": 40,
+   "p": {
+    "s": 1
+   }
+  },
+  {
+   "id": 117,
+   "type": "barrel",
+   "x": -19.5,
+   "y": 0,
+   "z": -10.6,
+   "ry": 0,
+   "p": {}
+  },
+  {
+   "id": 118,
+   "type": "barrel",
+   "x": 20.8,
+   "y": 0,
+   "z": -10.2,
+   "ry": 0,
+   "p": {}
+  },
+  {
+   "id": 119,
+   "type": "barrel",
+   "x": 20.6,
+   "y": 0,
+   "z": -21.4,
+   "ry": 0,
+   "p": {}
+  },
+  {
+   "id": 120,
+   "type": "barrel",
+   "x": 9.4,
+   "y": 0,
+   "z": -30.6,
+   "ry": 0,
+   "p": {}
+  },
+  {
+   "id": 121,
+   "type": "barrel",
+   "x": 9.3,
+   "y": 0,
+   "z": -36,
+   "ry": 0,
+   "p": {}
+  },
+  {
+   "id": 122,
+   "type": "barrel",
+   "x": -10.5,
+   "y": 0,
+   "z": -42.5,
+   "ry": 0,
+   "p": {}
+  },
+  {
+   "id": 123,
+   "type": "pillar",
+   "x": 11.5,
+   "y": 0,
+   "z": -22.5,
+   "ry": 0,
+   "p": {}
+  },
+  {
+   "id": 124,
+   "type": "pillar",
+   "x": 18.5,
+   "y": 0,
+   "z": -29.5,
+   "ry": 0,
+   "p": {}
+  },
+  {
+   "id": 125,
+   "type": "deadtree",
+   "x": -15,
+   "y": 0,
+   "z": -26,
+   "ry": 0,
+   "p": {}
+  },
+  {
+   "id": 126,
+   "type": "rubble",
+   "x": 0,
+   "y": 0,
+   "z": -26,
+   "ry": 0,
+   "p": {
+    "n": 6
+   }
+  },
+  {
+   "id": 127,
+   "type": "rubble",
+   "x": 4,
+   "y": 0,
+   "z": -29.5,
+   "ry": 0,
+   "p": {
+    "n": 4
+   }
+  },
+  {
+   "id": 128,
+   "type": "rubble",
+   "x": -11.5,
+   "y": 0,
+   "z": -23,
+   "ry": 0,
+   "p": {
+    "n": 4
+   }
+  },
+  {
+   "id": 129,
+   "type": "rubble",
+   "x": 4,
+   "y": 0,
+   "z": -18.4,
+   "ry": 0,
+   "p": {
+    "n": 4
+   }
+  },
+  {
+   "id": 130,
+   "type": "weaponbuy",
+   "x": -19.4,
+   "y": 0,
+   "z": -8.4,
+   "ry": 180,
+   "p": {
+    "weapon": "revolver",
+    "zone": 2
+   }
+  },
+  {
+   "id": 131,
+   "type": "weaponbuy",
+   "x": -41,
+   "y": 0,
+   "z": -3.6,
+   "ry": 90,
+   "p": {
+    "weapon": "forge_trenchshotgunfixed",
+    "zone": 2
+   }
+  },
+  {
+   "id": 132,
+   "type": "weaponbuy",
+   "x": 21.7,
+   "y": 0,
+   "z": -40.8,
+   "ry": -90,
+   "p": {
+    "weapon": "forge_millsmgfixed",
+    "zone": 3
+   }
+  },
+  {
+   "id": 133,
+   "type": "weaponbuy",
+   "x": -8.4,
+   "y": 0,
+   "z": -41.8,
+   "ry": -90,
+   "p": {
+    "weapon": "forge_m4riflemodel",
+    "zone": 4
+   }
+  },
+  {
+   "id": 134,
+   "type": "weaponbuy",
+   "x": 18,
+   "y": 0,
+   "z": -8.3,
+   "ry": 180,
+   "p": {
+    "weapon": "forge_semiautorifle",
+    "zone": 5
+   }
+  },
+  {
+   "id": 135,
+   "type": "weaponbuy",
+   "x": 38,
+   "y": 0,
+   "z": 42,
+   "ry": -135,
+   "p": {
+    "weapon": "lmg",
+    "zone": 6
+   }
+  },
+  {
+   "id": 136,
+   "type": "perkmachine",
+   "x": -35.3,
+   "y": 0,
+   "z": 6.2,
+   "ry": 180,
+   "p": {
+    "perk": "reload",
+    "cost": 0,
+    "requiresPower": "yes",
+    "zone": 2
+   }
+  },
+  {
+   "id": 137,
+   "type": "perkmachine",
+   "x": 12,
+   "y": 0,
+   "z": -9.4,
+   "ry": 180,
+   "p": {
+    "perk": "speed",
+    "cost": 0,
+    "requiresPower": "yes",
+    "zone": 3
+   }
+  },
+  {
+   "id": 138,
+   "type": "perkmachine",
+   "x": 21.5,
+   "y": 0,
+   "z": -36.1,
+   "ry": -90,
+   "p": {
+    "perk": "health",
+    "cost": 0,
+    "requiresPower": "yes",
+    "zone": 5
+   }
+  },
+  {
+   "id": 139,
+   "type": "perkmachine",
+   "x": -11.2,
+   "y": 0,
+   "z": -32.5,
+   "ry": 180,
+   "p": {
+    "perk": "headshot",
+    "cost": 0,
+    "requiresPower": "yes",
+    "zone": 7
+   }
+  },
+  {
+   "id": 140,
+   "type": "perkmachine",
+   "x": -6.5,
+   "y": 0,
+   "z": -32.4,
+   "ry": 180,
+   "p": {
+    "perk": "regen",
+    "cost": 0,
+    "requiresPower": "yes",
+    "zone": 0
+   },
+   "sx": 1,
+   "sy": 1,
+   "sz": 1
+  },
+  {
+   "id": 141,
+   "type": "upgrademachine",
+   "x": -6.9,
+   "y": 5,
+   "z": -32.7,
+   "ry": 45,
+   "p": {
+    "cost": 3000,
+    "requiresPower": "yes",
+    "zone": 6
+   }
+  },
+  {
+   "id": 142,
+   "type": "machine",
+   "x": -20,
+   "y": 0,
+   "z": -52.7,
+   "ry": 105,
+   "p": {
+    "title": "GENERATOR",
+    "color": "ff7a2a",
+    "big": "yes",
+    "role": "decor",
+    "perk": "reload",
+    "cost": 0,
+    "requiresPower": "no",
+    "zone": 6
+   }
+  },
+  {
+   "id": 143,
+   "type": "power",
+   "x": 5.2,
+   "y": 0,
+   "z": -43.6,
+   "ry": 0,
+   "p": {
+    "zone": 6
+   }
+  },
+  {
+   "id": 144,
+   "type": "spawnpoint",
+   "x": 0,
+   "y": 0,
+   "z": 0,
+   "ry": 180,
+   "p": {}
+  },
+  {
+   "id": 145,
+   "type": "wall",
+   "x1": 3.5,
+   "z1": -44,
+   "x2": 13.8,
+   "z2": -44,
+   "y": 0,
+   "h": 4.8
+  },
+  {
+   "id": 146,
+   "type": "door",
+   "x": 2,
+   "y": 0,
+   "z": -44,
+   "ry": 0,
+   "p": {
+    "name": "SIDE ROOM",
+    "cost": 2250,
+    "axis": "x",
+    "zoneA": "outside",
+    "zoneB": "room1",
+    "requiresPower": "no"
+   }
+  },
+  {
+   "id": 147,
+   "type": "bonfire",
+   "x": 1.7000000000000002,
+   "y": 0,
+   "z": -54.800000000000004,
+   "ry": 0,
+   "p": {
+    "size": 1.9,
+    "intensity": 3.8,
+    "radius": 34,
+    "color": "ff7a22",
+    "smoke": "yes",
+    "block": "no"
+   }
+  },
+  {
+   "id": 149,
+   "type": "fence",
+   "x": 11.700000000000001,
+   "y": 0,
+   "z": -46.900000000000006,
+   "ry": 75,
+   "p": {
+    "len": 6,
+    "h": 1.6,
+    "posts": 5,
+    "matName": "plank",
+    "collide": "yes"
+   }
+  },
+  {
+   "id": 150,
+   "type": "fence",
+   "x": 13.2,
+   "y": 0,
+   "z": -52.5,
+   "ry": -105,
+   "p": {
+    "len": 6,
+    "h": 1.6,
+    "posts": 5,
+    "matName": "plank",
+    "collide": "yes"
+   }
+  },
+  {
+   "id": 151,
+   "type": "fence",
+   "x": 14,
+   "y": 0,
+   "z": -57.1,
+   "ry": -90,
+   "p": {
+    "len": 3.5,
+    "h": 1.6,
+    "posts": 3,
+    "matName": "plank",
+    "collide": "yes"
+   }
+  },
+  {
+   "id": 152,
+   "type": "fence",
+   "x": -21.200000000000003,
+   "y": 0,
+   "z": -47.400000000000006,
+   "ry": 75,
+   "p": {
+    "len": 6,
+    "h": 1.6,
+    "posts": 5,
+    "matName": "plank",
+    "collide": "yes"
+   }
+  },
+  {
+   "id": 153,
+   "type": "fence",
+   "x": -21.200000000000003,
+   "y": 0,
+   "z": -53.2,
+   "ry": 105,
+   "p": {
+    "len": 6,
+    "h": 1.6,
+    "posts": 5,
+    "matName": "plank",
+    "collide": "yes"
+   }
+  },
+  {
+   "id": 154,
+   "type": "planter",
+   "x": 7.6000000000000005,
+   "y": 0,
+   "z": -44.6,
+   "ry": 0,
+   "p": {
+    "w": 2.4,
+    "d": 0.9,
+    "h": 0.65,
+    "plants": 6
+   }
+  },
+  {
+   "id": 155,
+   "type": "powerpole",
+   "x": -20.200000000000003,
+   "y": 0,
+   "z": -46.7,
+   "ry": 0,
+   "p": {
+    "h": 7,
+    "lines": 3,
+    "transformer": "yes",
+    "block": "yes"
+   }
+  },
+  {
+   "id": 156,
+   "type": "generator",
+   "x": 9.8,
+   "y": 0,
+   "z": -44.900000000000006,
+   "ry": 0,
+   "p": {
+    "w": 1.8,
+    "d": 1,
+    "block": "yes"
+   }
+  },
+  {
+   "id": 157,
+   "type": "transformerbox",
+   "x": 6.8,
+   "y": 1.14,
+   "z": -43.8,
+   "ry": 180,
+   "p": {
+    "w": 1.3,
+    "d": 0.95,
+    "h": 1.35,
+    "block": "yes"
+   }
+  },
+  {
+   "id": 158,
+   "type": "toolbox",
+   "x": -0.7000000000000001,
+   "y": 0,
+   "z": -44.6,
+   "ry": 15,
+   "p": {
+    "block": "no"
+   }
+  },
+  {
+   "id": 159,
+   "type": "gascan",
+   "x": -1.7000000000000002,
+   "y": 0.14,
+   "z": -44.7,
+   "ry": 0,
+   "p": {
+    "block": "no"
+   }
+  },
+  {
+   "id": 160,
+   "type": "papers",
+   "x": 8.6,
+   "y": 0.03,
+   "z": -46.800000000000004,
+   "ry": 0,
+   "p": {
+    "count": 12,
+    "w": 2.2,
+    "d": 1.6
+   }
+  },
+  {
+   "id": 161,
+   "type": "vendingmachine",
+   "x": 4.9,
+   "y": 0.14,
+   "z": -44.400000000000006,
+   "ry": 0,
+   "p": {
+    "text": "COLA",
+    "color": "7a1f2a",
+    "block": "yes"
+   }
+  },
+  {
+   "id": 162,
+   "type": "cardboard",
+   "x": -8.8,
+   "y": 0,
+   "z": -45.1,
+   "ry": 0,
+   "p": {
+    "count": 1,
+    "block": "yes"
+   }
+  },
+  {
+   "id": 163,
+   "type": "cardboard",
+   "x": -10.5,
+   "y": 0,
+   "z": -44.900000000000006,
+   "ry": 0,
+   "p": {
+    "count": 1,
+    "block": "yes"
+   }
+  },
+  {
+   "id": 164,
+   "type": "cardboard",
+   "x": -9.700000000000001,
+   "y": 0,
+   "z": -46.6,
+   "ry": 0,
+   "p": {
+    "count": 1,
+    "block": "yes"
+   }
+  },
+  {
+   "id": 165,
+   "type": "rubble",
+   "x": -19.8,
+   "y": 0,
+   "z": -54.900000000000006,
+   "ry": 0,
+   "p": {
+    "n": 3
+   }
+  },
+  {
+   "id": 166,
+   "type": "deadtree",
+   "x": -17,
+   "y": 0,
+   "z": -56.2,
+   "ry": 0,
+   "p": {}
+  },
+  {
+   "id": 167,
+   "type": "deadtree",
+   "x": 12.5,
+   "y": 0,
+   "z": -60.800000000000004,
+   "ry": 0,
+   "p": {}
+  },
+  {
+   "id": 168,
+   "type": "deadtree",
+   "x": 4.2,
+   "y": 0,
+   "z": -64.5,
+   "ry": 0,
+   "p": {}
+  },
+  {
+   "id": 169,
+   "type": "deadtree",
+   "x": -12.5,
+   "y": 0,
+   "z": -60,
+   "ry": 0,
+   "p": {}
+  },
+  {
+   "id": 170,
+   "type": "deadtree",
+   "x": -2.6,
+   "y": 0,
+   "z": -65.8,
+   "ry": 0,
+   "p": {}
+  },
+  {
+   "id": 171,
+   "type": "deadtree",
+   "x": -9.4,
+   "y": 0,
+   "z": -65.10000000000001,
+   "ry": 0,
+   "p": {}
+  },
+  {
+   "id": 172,
+   "type": "radio",
+   "x": -6.300000000000001,
+   "y": 0.14,
+   "z": -44.7,
+   "ry": 0,
+   "p": {
+    "w": 1,
+    "color": "2d3436",
+    "block": "no"
+   }
+  },
+  {
+   "id": 173,
+   "type": "barrel",
+   "x": -12.8,
+   "y": 0,
+   "z": -44.7,
+   "ry": 0,
+   "p": {}
+  },
+  {
+   "id": 174,
+   "type": "boulder",
+   "x": -19.700000000000003,
+   "y": 0,
+   "z": -50.6,
+   "ry": 0,
+   "p": {
+    "s": 1.2,
+    "count": 1,
+    "collide": "yes"
+   }
+  },
+  {
+   "id": 175,
+   "type": "gravestone",
+   "x": -16.9,
+   "y": 0,
+   "z": -59.2,
+   "ry": -120,
+   "p": {
+    "style": "slab",
+    "text": "RIP",
+    "w": 0.78,
+    "h": 1.25,
+    "matName": "wall",
+    "block": "no"
+   }
+  },
+  {
+   "id": 176,
+   "type": "wallposter",
+   "x": -7.2,
+   "y": 2,
+   "z": -44.35,
+   "ry": 180,
+   "p": {
+    "preset": "MISSING: RANDY",
+    "text": "Don't feed the zombies",
+    "color": "4b1518",
+    "w": 1.35,
+    "h": 1.8
+   }
+  },
+  {
+   "id": 177,
+   "type": "door",
+   "x": -22,
+   "y": 0,
+   "z": -10,
+   "ry": 90,
+   "p": {
+    "name": "SIDE ROOM",
+    "cost": 1500,
+    "axis": "x",
+    "zoneA": "outside",
+    "zoneB": "room1",
+    "requiresPower": "no"
+   }
+  },
+  {
+   "id": 178,
+   "type": "wall",
+   "x1": -22,
+   "z1": -12.8,
+   "x2": -22,
+   "z2": -11.5,
+   "y": 0,
+   "h": 4.8
+  },
+  {
+   "id": 179,
+   "type": "wall",
+   "x1": -22.3,
+   "z1": -12.1,
+   "x2": -33.8,
+   "z2": -12.1,
+   "y": 0,
+   "h": 4.8
+  },
+  {
+   "id": 180,
+   "type": "zwindow",
+   "x": -35,
+   "y": 0,
+   "z": -12.100000000000001,
+   "ry": 180,
+   "p": {
+    "axis": "x",
+    "side": "+",
+    "zoneA": "outside",
+    "zoneB": "room1",
+    "boards": 4,
+    "collide": "yes"
+   }
+  },
+  {
+   "id": 181,
+   "type": "zombiespawn",
+   "x": -35,
+   "y": 0,
+   "z": -14.8,
+   "ry": 0,
+   "p": {
+    "zone": "outside",
+    "weight": 1
+   }
+  },
+  {
+   "id": 189,
+   "type": "platform",
+   "x": -31.4,
+   "y": 0.1,
+   "z": -9.8,
+   "ry": 0,
+   "p": {
+    "w": 20,
+    "d": 4,
+    "thick": 0.4
+   }
+  },
+  {
+   "id": 190,
+   "type": "wall",
+   "x1": -36.2,
+   "z1": -12.1,
+   "x2": -41.4,
+   "z2": -12.1,
+   "y": 0,
+   "h": 4.8
+  },
+  {
+   "id": 192,
+   "type": "wall",
+   "x1": -41.4,
+   "z1": -12.4,
+   "x2": -41.4,
+   "z2": 1.8,
+   "y": 0,
+   "h": 4.8
+  },
+  {
+   "id": 193,
+   "type": "zwindow",
+   "x": -41.400000000000006,
+   "y": 0,
+   "z": 3,
+   "ry": -90,
+   "p": {
+    "axis": "x",
+    "side": "+",
+    "zoneA": "outside",
+    "zoneB": "room1",
+    "boards": 4,
+    "collide": "yes"
+   }
+  },
+  {
+   "id": 194,
+   "type": "zombiespawn",
+   "x": -43.9,
+   "y": 0,
+   "z": 3,
+   "ry": 0,
+   "p": {
+    "zone": "outside",
+    "weight": 1
+   }
+  },
+  {
+   "id": 195,
+   "type": "platform",
+   "x": -31.1,
+   "y": 0.1,
+   "z": -0.3,
+   "ry": 0,
+   "p": {
+    "w": 20,
+    "d": 15,
+    "thick": 0.4
+   }
+  },
+  {
+   "id": 196,
+   "type": "wall",
+   "x1": -41.4,
+   "z1": 4.25,
+   "x2": -41.4,
+   "z2": 7.2,
+   "y": 0,
+   "h": 4.8
+  },
+  {
+   "id": 197,
+   "type": "zwindow",
+   "x": -21.4,
+   "y": 0,
+   "z": 5.4,
+   "ry": 90,
+   "p": {
+    "axis": "x",
+    "side": "+",
+    "zoneA": "outside",
+    "zoneB": "room1",
+    "boards": 4,
+    "collide": "yes"
+   }
+  },
+  {
+   "id": 198,
+   "type": "wall",
+   "x1": -41.4,
+   "z1": 6.9,
+   "x2": -30.6,
+   "z2": 6.9,
+   "y": 0,
+   "h": 4.8
+  },
+  {
+   "id": 212,
+   "type": "wall",
+   "x1": -21.4,
+   "z1": -7.75,
+   "x2": -21.4,
+   "z2": 4.15,
+   "y": 0,
+   "h": 1.1
+  },
+  {
+   "id": 213,
+   "type": "glasspane",
+   "x": -21.4,
+   "y": 1.1,
+   "z": 2.7,
+   "ry": 90,
+   "sx": 1,
+   "sy": 1,
+   "sz": 1,
+   "p": {
+    "w": 1.4,
+    "h": 1.6,
+    "bar": 0.08
+   }
+  },
+  {
+   "id": 214,
+   "type": "glasspane",
+   "x": -21.4,
+   "y": 1.1,
+   "z": -1.4,
+   "ry": 90,
+   "sx": 1,
+   "sy": 1,
+   "sz": 1,
+   "p": {
+    "w": 1.4,
+    "h": 1.6,
+    "bar": 0.08
+   }
+  },
+  {
+   "id": 215,
+   "type": "glasspane",
+   "x": -21.4,
+   "y": 1.1,
+   "z": -5.1,
+   "ry": 90,
+   "sx": 1,
+   "sy": 1,
+   "sz": 1,
+   "p": {
+    "w": 1.4,
+    "h": 1.6,
+    "bar": 0.08
+   }
+  },
+  {
+   "id": 216,
+   "type": "wall",
+   "x1": -21.4,
+   "z1": -7.75,
+   "x2": -21.4,
+   "z2": 4.15,
+   "y": 2.7,
+   "h": 2.1
+  },
+  {
+   "id": 217,
+   "type": "wallboards",
+   "x": -21.4,
+   "y": 1.9,
+   "z": 0.6,
+   "ry": 90,
+   "sx": 1,
+   "sy": 1,
+   "sz": 1,
+   "p": {
+    "w": 3.2,
+    "h": 1.8,
+    "boards": 10
+   }
+  },
+  {
+   "id": 218,
+   "type": "wallboards",
+   "x": -21.4,
+   "y": 1.9,
+   "z": -3.2,
+   "ry": 90,
+   "sx": 1,
+   "sy": 1,
+   "sz": 1,
+   "p": {
+    "w": 2.7,
+    "h": 1.8,
+    "boards": 10
+   }
+  },
+  {
+   "id": 219,
+   "type": "box",
+   "x": -21.4,
+   "y": 0,
+   "z": -2.1,
+   "ry": 0,
+   "p": {
+    "w": 0.3,
+    "h": 4.7,
+    "d": 0.3,
+    "matName": "trim",
+    "collide": "yes"
+   }
+  },
+  {
+   "id": 220,
+   "type": "box",
+   "x": -21.4,
+   "y": 0,
+   "z": -0.7,
+   "ry": 0,
+   "p": {
+    "w": 0.3,
+    "h": 4.7,
+    "d": 0.3,
+    "matName": "trim",
+    "collide": "yes"
+   }
+  },
+  {
+   "id": 221,
+   "type": "box",
+   "x": -21.4,
+   "y": 0,
+   "z": 1.9,
+   "ry": 0,
+   "p": {
+    "w": 0.3,
+    "h": 4.7,
+    "d": 0.3,
+    "matName": "trim",
+    "collide": "yes"
+   }
+  },
+  {
+   "id": 222,
+   "type": "box",
+   "x": -21.4,
+   "y": 0,
+   "z": 3.4,
+   "ry": 0,
+   "p": {
+    "w": 0.3,
+    "h": 4.7,
+    "d": 0.3,
+    "matName": "trim",
+    "collide": "yes"
+   }
+  },
+  {
+   "id": 223,
+   "type": "box",
+   "x": -21.4,
+   "y": 0,
+   "z": -4.3,
+   "ry": 0,
+   "p": {
+    "w": 0.3,
+    "h": 4.7,
+    "d": 0.3,
+    "matName": "trim",
+    "collide": "yes"
+   }
+  },
+  {
+   "id": 224,
+   "type": "box",
+   "x": -21.4,
+   "y": 0,
+   "z": -5.9,
+   "ry": 0,
+   "p": {
+    "w": 0.3,
+    "h": 4.7,
+    "d": 0.3,
+    "matName": "trim",
+    "collide": "yes"
+   }
+  },
+  {
+   "id": 225,
+   "type": "wallboards",
+   "x": -21.4,
+   "y": 1.9,
+   "z": -7,
+   "ry": 90,
+   "sx": 1,
+   "sy": 1,
+   "sz": 1,
+   "p": {
+    "w": 2.7,
+    "h": 1.8,
+    "boards": 10
+   }
+  },
+  {
+   "id": 226,
+   "type": "wallboards",
+   "x": -21.4,
+   "y": 1.9,
+   "z": 3.8,
+   "ry": 90,
+   "sx": 1,
+   "sy": 1,
+   "sz": 1,
+   "p": {
+    "w": 0.7,
+    "h": 1.8,
+    "boards": 10
+   }
+  },
+  {
+   "id": 233,
+   "type": "pitchedroof",
+   "x": -31.5,
+   "y": 4.8,
+   "z": -2.5,
+   "ry": 0,
+   "sx": 2.2,
+   "sy": 2.2,
+   "sz": 1.7,
+   "p": {
+    "w": 9.5,
+    "d": 12,
+    "rise": 3,
+    "thick": 0.3,
+    "matName": "roof"
+   }
+  },
+  {
+   "id": 253,
+   "type": "gablewall",
+   "x": -31.5,
+   "y": 4.8,
+   "z": 7,
+   "ry": 0,
+   "sx": 2.6,
+   "sy": 2.2,
+   "sz": 1,
+   "p": {
+    "w": 8,
+    "h": 2.8,
+    "d": 0.35,
+    "matName": "wall"
+   }
+  },
+  {
+   "id": 254,
+   "type": "gablewall",
+   "x": -31.5,
+   "y": 4.8,
+   "z": -12.5,
+   "ry": 0,
+   "sx": 2.6,
+   "sy": 2.2,
+   "sz": 1,
+   "p": {
+    "w": 8,
+    "h": 2.8,
+    "d": 0.35,
+    "matName": "wall"
+   }
+  },
+  {
+   "id": 255,
+   "type": "zwindow",
+   "x": -29.400000000000002,
+   "y": 0.1,
+   "z": 6.9,
+   "ry": 0,
+   "sx": 1,
+   "sy": 1,
+   "sz": 1,
+   "p": {
+    "axis": "x",
+    "side": "+",
+    "zoneA": "outside",
+    "zoneB": "room1",
+    "boards": 4,
+    "collide": "yes"
+   }
+  },
+  {
+   "id": 256,
+   "type": "zombiespawn",
+   "x": -30.5,
+   "y": 0,
+   "z": 8.5,
+   "ry": 0,
+   "p": {
+    "zone": "outside",
+    "weight": 1
+   }
+  },
+  {
+   "id": 257,
+   "type": "zombiespawn",
+   "x": -19.1,
+   "y": 0,
+   "z": 4.8,
+   "ry": 0,
+   "p": {
+    "zone": "outside",
+    "weight": 1
+   }
+  },
+  {
+   "id": 258,
+   "type": "wall",
+   "x1": -28.164,
+   "z1": 6.9,
+   "x2": -21.036,
+   "z2": 6.9,
+   "y": 0,
+   "h": 4.8
+  },
+  {
+   "id": 259,
+   "type": "firebarrel",
+   "x": -17.7,
+   "y": 0,
+   "z": -6.5,
+   "ry": 0,
+   "sx": 1,
+   "sy": 1,
+   "sz": 1,
+   "p": {
+    "size": 1,
+    "intensity": 2.2,
+    "radius": 20,
+    "color": "ff7a22",
+    "smoke": "yes",
+    "block": "yes"
+   }
+  },
+  {
+   "id": 260,
+   "type": "wall",
+   "x1": 41.27,
+   "z1": 39.33,
+   "x2": 35.33,
+   "z2": 45.27,
+   "y": 0,
+   "h": 4.8
+  },
+  {
+   "id": 261,
+   "type": "wall",
+   "x1": 35.23,
+   "z1": 33.73,
+   "x2": 41.17,
+   "z2": 39.67,
+   "y": 0,
+   "h": 4.8
+  },
+  {
+   "id": 262,
+   "type": "wall",
+   "x1": 29.73,
+   "z1": 39.23,
+   "x2": 35.67,
+   "z2": 45.17,
+   "y": 0,
+   "h": 4.8
+  },
+  {
+   "id": 263,
+   "type": "door",
+   "x": 32.8,
+   "y": 0,
+   "z": 36.6,
+   "ry": -135,
+   "sx": 1,
+   "sy": 1,
+   "sz": 1,
+   "p": {
+    "name": "SHED",
+    "cost": 5000,
+    "axis": "x",
+    "zoneA": "outside",
+    "zoneB": "room1",
+    "requiresPower": "no"
+   }
+  },
+  {
+   "id": 265,
+   "type": "wall",
+   "x1": 35.342,
+   "z1": 34.058,
+   "x2": 33.858,
+   "z2": 35.542,
+   "y": 0,
+   "h": 4.8
+  },
+  {
+   "id": 266,
+   "type": "wall",
+   "x1": 31.754,
+   "z1": 37.645,
+   "x2": 29.846,
+   "z2": 39.555,
+   "y": 0,
+   "h": 4.8
+  },
+  {
+   "id": 267,
+   "type": "pitchedroof",
+   "x": 35.5,
+   "y": 4.8,
+   "z": 39.5,
+   "ry": -135,
+   "sx": 0.86,
+   "sy": 0.78,
+   "sz": 0.801,
+   "p": {
+    "w": 9.5,
+    "d": 11.5,
+    "rise": 3,
+    "thick": 0.3,
+    "matName": "roof"
+   }
+  },
+  {
+   "id": 268,
+   "type": "gablewall",
+   "x": 32.5,
+   "y": 4.8,
+   "z": 36.5,
+   "ry": 45,
+   "sx": 1,
+   "sy": 0.81,
+   "sz": 1,
+   "p": {
+    "w": 8,
+    "h": 2.8,
+    "d": 0.35,
+    "matName": "rust"
+   }
+  },
+  {
+   "id": 269,
+   "type": "gablewall",
+   "x": 38.5,
+   "y": 4.8,
+   "z": 42.3,
+   "ry": 45,
+   "sx": 1,
+   "sy": 0.81,
+   "sz": 1,
+   "p": {
+    "w": 8,
+    "h": 2.8,
+    "d": 0.35,
+    "matName": "rust"
+   }
+  },
+  {
+   "id": 270,
+   "type": "platform",
+   "x": 35.7,
+   "y": 0.1,
+   "z": 39.7,
+   "ry": 45,
+   "sx": 1,
+   "sy": 1,
+   "sz": 1,
+   "p": {
+    "w": 8,
+    "d": 8,
+    "thick": 0.4
+   }
+  },
+  {
+   "id": 271,
+   "type": "deadtree",
+   "x": 41.300000000000004,
+   "y": 0,
+   "z": 37.300000000000004,
+   "ry": 0,
+   "sx": 1,
+   "sy": 1,
+   "sz": 1,
+   "p": {}
+  },
+  {
+   "id": 272,
+   "type": "deadtree",
+   "x": 41.5,
+   "y": 0,
+   "z": 35.800000000000004,
+   "ry": 0,
+   "sx": 1,
+   "sy": 1,
+   "sz": 1,
+   "p": {}
+  },
+  {
+   "id": 273,
+   "type": "deadtree",
+   "x": 43.900000000000006,
+   "y": 0,
+   "z": 35.9,
+   "ry": 0,
+   "sx": 1,
+   "sy": 1,
+   "sz": 1,
+   "p": {}
+  },
+  {
+   "id": 274,
+   "type": "deadtree",
+   "x": 42.300000000000004,
+   "y": 0,
+   "z": 39.400000000000006,
+   "ry": 0,
+   "sx": 1,
+   "sy": 1,
+   "sz": 1,
+   "p": {}
+  },
+  {
+   "id": 275,
+   "type": "deadtree",
+   "x": 43.900000000000006,
+   "y": 0,
+   "z": 38,
+   "ry": 0,
+   "sx": 1,
+   "sy": 1,
+   "sz": 1,
+   "p": {}
+  },
+  {
+   "id": 276,
+   "type": "deadtree",
+   "x": 42.2,
+   "y": 0,
+   "z": 33.800000000000004,
+   "ry": 0,
+   "sx": 1,
+   "sy": 1,
+   "sz": 1,
+   "p": {}
+  },
+  {
+   "id": 277,
+   "type": "deadtree",
+   "x": 38,
+   "y": 0,
+   "z": 34.4,
+   "ry": 0,
+   "sx": 1,
+   "sy": 1,
+   "sz": 1,
+   "p": {}
+  },
+  {
+   "id": 278,
+   "type": "deadtree",
+   "x": 39.800000000000004,
+   "y": 0,
+   "z": 32.9,
+   "ry": 0,
+   "sx": 1,
+   "sy": 1,
+   "sz": 1,
+   "p": {}
+  },
+  {
+   "id": 279,
+   "type": "deadtree",
+   "x": 45.1,
+   "y": 0,
+   "z": 33.300000000000004,
+   "ry": 0,
+   "sx": 1,
+   "sy": 1,
+   "sz": 1,
+   "p": {}
+  },
+  {
+   "id": 280,
+   "type": "deadtree",
+   "x": 46.5,
+   "y": 0,
+   "z": 35,
+   "ry": 0,
+   "sx": 1,
+   "sy": 1,
+   "sz": 1,
+   "p": {}
+  },
+  {
+   "id": 281,
+   "type": "deadtree",
+   "x": 48.800000000000004,
+   "y": 0,
+   "z": 32.800000000000004,
+   "ry": 0,
+   "sx": 1,
+   "sy": 1,
+   "sz": 1,
+   "p": {}
+  },
+  {
+   "id": 282,
+   "type": "deadtree",
+   "x": 45.5,
+   "y": 0,
+   "z": 30.900000000000002,
+   "ry": 0,
+   "sx": 1,
+   "sy": 1,
+   "sz": 1,
+   "p": {}
+  },
+  {
+   "id": 283,
+   "type": "deadtree",
+   "x": 41.6,
+   "y": 0,
+   "z": 30.6,
+   "ry": 0,
+   "sx": 1,
+   "sy": 1,
+   "sz": 1,
+   "p": {}
+  },
+  {
+   "id": 284,
+   "type": "deadtree",
+   "x": 41.5,
+   "y": 0,
+   "z": 41.400000000000006,
+   "ry": 0,
+   "sx": 1,
+   "sy": 1,
+   "sz": 1,
+   "p": {}
+  },
+  {
+   "id": 285,
+   "type": "deadtree",
+   "x": 39.6,
+   "y": 0,
+   "z": 43.900000000000006,
+   "ry": 0,
+   "sx": 1,
+   "sy": 1,
+   "sz": 1,
+   "p": {}
+  },
+  {
+   "id": 286,
+   "type": "deadtree",
+   "x": 36.5,
+   "y": 0,
+   "z": 45.6,
+   "ry": 0,
+   "sx": 1,
+   "sy": 1,
+   "sz": 1,
+   "p": {}
+  },
+  {
+   "id": 287,
+   "type": "deadtree",
+   "x": 33.9,
+   "y": 0,
+   "z": 47.300000000000004,
+   "ry": 0,
+   "sx": 1,
+   "sy": 1,
+   "sz": 1,
+   "p": {}
+  },
+  {
+   "id": 288,
+   "type": "deadtree",
+   "x": 31.200000000000003,
+   "y": 0,
+   "z": 48.800000000000004,
+   "ry": 0,
+   "sx": 1,
+   "sy": 1,
+   "sz": 1,
+   "p": {}
+  },
+  {
+   "id": 289,
+   "type": "deadtree",
+   "x": 33.4,
+   "y": 0,
+   "z": 45.800000000000004,
+   "ry": 0,
+   "sx": 1,
+   "sy": 1,
+   "sz": 1,
+   "p": {}
+  },
+  {
+   "id": 290,
+   "type": "deadtree",
+   "x": 31.6,
+   "y": 0,
+   "z": 45.7,
+   "ry": 0,
+   "sx": 1,
+   "sy": 1,
+   "sz": 1,
+   "p": {}
+  },
+  {
+   "id": 291,
+   "type": "deadtree",
+   "x": 30.900000000000002,
+   "y": 0,
+   "z": 42.7,
+   "ry": 0,
+   "sx": 1,
+   "sy": 1,
+   "sz": 1,
+   "p": {}
+  },
+  {
+   "id": 292,
+   "type": "deadtree",
+   "x": 28.8,
+   "y": 0,
+   "z": 41.400000000000006,
+   "ry": 0,
+   "sx": 1,
+   "sy": 1,
+   "sz": 1,
+   "p": {}
+  },
+  {
+   "id": 293,
+   "type": "deadtree",
+   "x": 27.3,
+   "y": 0,
+   "z": 43.300000000000004,
+   "ry": 0,
+   "sx": 1,
+   "sy": 1,
+   "sz": 1,
+   "p": {}
+  },
+  {
+   "id": 294,
+   "type": "deadtree",
+   "x": 30,
+   "y": 0,
+   "z": 46.5,
+   "ry": 0,
+   "sx": 1,
+   "sy": 1,
+   "sz": 1,
+   "p": {}
+  },
+  {
+   "id": 295,
+   "type": "deadtree",
+   "x": 28.8,
+   "y": 0,
+   "z": 43.6,
+   "ry": 0,
+   "sx": 1,
+   "sy": 1,
+   "sz": 1,
+   "p": {}
+  },
+  {
+   "id": 296,
+   "type": "deadtree",
+   "x": 28,
+   "y": 0,
+   "z": 46.1,
+   "ry": 0,
+   "sx": 1,
+   "sy": 1,
+   "sz": 1,
+   "p": {}
+  },
+  {
+   "id": 297,
+   "type": "deadtree",
+   "x": 29,
+   "y": 0,
+   "z": 48.7,
+   "ry": 0,
+   "sx": 1,
+   "sy": 1,
+   "sz": 1,
+   "p": {}
+  },
+  {
+   "id": 298,
+   "type": "deadtree",
+   "x": 27.900000000000002,
+   "y": 0,
+   "z": 51,
+   "ry": 0,
+   "sx": 1,
+   "sy": 1,
+   "sz": 1,
+   "p": {}
+  },
+  {
+   "id": 299,
+   "type": "tirestack",
+   "x": 37.8,
+   "y": 0,
+   "z": 32.5,
+   "ry": 0,
+   "sx": 1,
+   "sy": 1,
+   "sz": 1,
+   "p": {
+    "count": 4,
+    "block": "no"
+   }
+  },
+  {
+   "id": 300,
+   "type": "dumpster",
+   "x": 39.4,
+   "y": 0,
+   "z": 30.9,
+   "ry": 45,
+   "sx": 1,
+   "sy": 1,
+   "sz": 1,
+   "p": {
+    "w": 2.6,
+    "d": 1.35,
+    "h": 1.35,
+    "color": "2f5a3b",
+    "block": "yes"
+   }
+  },
+  {
+   "id": 301,
+   "type": "firebarrel",
+   "x": 36.300000000000004,
+   "y": 0,
+   "z": 33.2,
+   "ry": 0,
+   "sx": 1,
+   "sy": 1,
+   "sz": 1,
+   "p": {
+    "size": 1,
+    "intensity": 2.2,
+    "radius": 20,
+    "color": "ff7a22",
+    "smoke": "yes",
+    "block": "yes"
+   }
+  },
+  {
+   "id": 302,
+   "type": "railing",
+   "x": -2.5,
+   "y": 5.15,
+   "z": -29.2,
+   "ry": 0,
+   "p": {
+    "len": 10.5,
+    "h": 1.05,
+    "posts": 7,
+    "matName": "rust"
+   },
+   "sx": 1,
+   "sy": 1,
+   "sz": 1
+  },
+  {
+   "id": 303,
+   "type": "railing",
+   "x": -7.7,
+   "y": 5.15,
+   "z": -31.5,
+   "ry": 90,
+   "p": {
+    "len": 4.25,
+    "h": 1.05,
+    "posts": 4,
+    "matName": "rust"
+   },
+   "sx": 1,
+   "sy": 1,
+   "sz": 1
+  },
+  {
+   "id": 304,
+   "type": "pitchedroof",
+   "x": 15.3,
+   "y": 5,
+   "z": -38.3,
+   "ry": 0,
+   "sx": 1.43,
+   "sy": 1.4,
+   "sz": 1.1,
+   "p": {
+    "w": 10,
+    "d": 12,
+    "rise": 3,
+    "thick": 0.3,
+    "matName": "roof"
+   }
+  },
+  {
+   "id": 305,
+   "type": "pitchedroof",
+   "x": -14.8,
+   "y": 5.1,
+   "z": -37.8,
+   "ry": 0,
+   "sx": 1.43,
+   "sy": 2.38,
+   "sz": 1.1,
+   "p": {
+    "w": 10,
+    "d": 12,
+    "rise": 3,
+    "thick": 0.3,
+    "matName": "roof"
+   }
+  },
+  {
+   "id": 306,
+   "type": "roofslab",
+   "x": 0.4,
+   "y": 5.2,
+   "z": -39.2,
+   "ry": 0,
+   "sx": 1.188,
+   "sy": 1,
+   "sz": 1,
+   "p": {
+    "w": 12,
+    "d": 10,
+    "thick": 0.45,
+    "over": 0.35,
+    "parapet": 0.45,
+    "matName": "roof",
+    "walkable": "yes"
+   }
+  },
+  {
+   "id": 307,
+   "type": "gablewall",
+   "x": -14.8,
+   "y": 4.8,
+   "z": -44.1,
+   "ry": 0,
+   "sx": 1.9,
+   "sy": 2.5,
+   "sz": 1,
+   "p": {
+    "w": 8,
+    "h": 2.8,
+    "d": 0.35,
+    "matName": "wall"
+   }
+  },
+  {
+   "id": 308,
+   "type": "gablewall",
+   "x": -14.9,
+   "y": 4.8,
+   "z": -31.9,
+   "ry": 0,
+   "sx": 1.9,
+   "sy": 2.5,
+   "sz": 1,
+   "p": {
+    "w": 8,
+    "h": 2.8,
+    "d": 0.35,
+    "matName": "wall"
+   }
+  },
+  {
+   "id": 309,
+   "type": "gablewall",
+   "x": 15.3,
+   "y": 4.8,
+   "z": -32.5,
+   "ry": 0,
+   "sx": 1.8,
+   "sy": 1.3,
+   "sz": 1,
+   "p": {
+    "w": 8,
+    "h": 3.2,
+    "d": 0.35,
+    "matName": "wall"
+   }
+  },
+  {
+   "id": 310,
+   "type": "gablewall",
+   "x": 15.3,
+   "y": 4.9,
+   "z": -44.6,
+   "ry": 0,
+   "sx": 1.8,
+   "sy": 1.3,
+   "sz": 1,
+   "p": {
+    "w": 8,
+    "h": 3.2,
+    "d": 0.35,
+    "matName": "wall"
+   }
+  },
+  {
+   "id": 311,
+   "type": "weaponbuy",
+   "x": -12.9,
+   "y": 0,
+   "z": -7.7,
+   "ry": 0,
+   "p": {
+    "weapon": "forge_m4riflemodel",
+    "zone": 4
+   }
+  }
+ ]
+}
