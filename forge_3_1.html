@@ -149,6 +149,7 @@
   <div class="spacer"></div>
   <div class="tgroup">
     <button class="tb" id="btnWeaponForge" title="Open the weapon model editor">WEAPON FORGE</button>
+    <button class="tb" id="btnHarvest" title="Load an editable copy of Harvest Facility">EDIT HARVEST</button>
     <button class="tb" id="btnUndo" title="Ctrl+Z">UNDO</button>
     <button class="tb warn" id="btnNew">NEW</button>
     <button class="tb" id="btnSave">SAVE .JSON</button>
@@ -219,6 +220,7 @@
       <div><b>LMB</b> select · <b>Shift/Ctrl+LMB</b> add/remove · drag selected objects to move · <b>Q</b>/<b>E</b> raise/lower</div>
       <div><b>Del</b> delete &nbsp; <b>Ctrl+D</b> duplicate &nbsp; <b>Ctrl+Z</b> undo</div>
       <div class="sec">Saving</div>
+      <div><b>EDIT HARVEST</b> loads an editable Forge conversion of the original Harvest Facility. Save it as JSON, then use the game's LOAD MAP .JSON option to test your edited version.</div>
       <div>SAVE/LOAD .json keeps your layout. EXPORT CODE generates paste-ready JS for game.html. Work also autosaves to this browser.</div>
     </div>
   </div>
@@ -228,6 +230,7 @@
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
 <script src="gunshtml/weapon-model-catalog.js"></script>
+<script src="maps/harvest-facility-forge.js"></script>
 <script>
 /* ============================================================
    DEAD GAME — FORGE  ·  level editor for game.html
@@ -3419,6 +3422,7 @@ function buildWallMesh(o){
    EDITOR STATE
    ============================================================ */
 let objects = [];          /* data model */
+let documentFilename = 'forge-layout.json';
 const meshOf = new Map();  /* id -> THREE.Group */
 let editorTerminalGlows = [];
 let nextId = 1;
@@ -4842,10 +4846,37 @@ document.getElementById('modeSelect').onclick = () => setMode('select');
 document.getElementById('modeWall').onclick = () => setMode('wall');
 document.getElementById('btnUndo').onclick = undo;
 
+function loadForgeDocument(data, label, filename){
+  if(!data || !Array.isArray(data.objects)) throw new Error('Invalid Forge document');
+  pushUndo();
+  objects = JSON.parse(JSON.stringify(data.objects));
+  skySettings.preset = data.sky && data.sky.preset || 'default';
+  skySel.value = skySettings.preset;
+  applyForgeSky();
+  nextId = objects.reduce((m,o)=>Math.max(m,o.id),0)+1;
+  select(null);
+  rebuildAll();
+  autosave();
+  documentFilename = filename || 'forge-layout.json';
+  toast(`loaded ${label || objects.length + ' objects'} — ${objects.length} objects`);
+}
+
+document.getElementById('btnHarvest').onclick = () => {
+  const harvest = window.DEAD_GAME_HARVEST_FORGE_MAP;
+  if(!harvest){ toast('Harvest map data is missing — run Start Forge Editors.bat'); return; }
+  if(objects.length && !confirm('Replace the current layout with an editable copy of Harvest Facility?')) return;
+  try{
+    loadForgeDocument(harvest, 'Harvest Facility', 'harvest-facility-edited.json');
+  }catch(error){
+    toast('could not load the Harvest Facility conversion');
+  }
+};
+
 document.getElementById('btnNew').onclick = () => {
   if(objects.length && !confirm('Clear the whole layout?')) return;
   pushUndo();
   objects = [];
+  documentFilename = 'forge-layout.json';
   skySettings.preset = 'default';
   skySel.value = 'default';
   applyForgeSky();
@@ -4857,7 +4888,7 @@ document.getElementById('btnSave').onclick = () => {
   const blob = new Blob([serialize()], {type:'application/json'});
   const a = document.createElement('a');
   a.href = URL.createObjectURL(blob);
-  a.download = 'forge-layout.json';
+  a.download = documentFilename;
   a.click();
   URL.revokeObjectURL(a.href);
 };
@@ -4869,17 +4900,7 @@ document.getElementById('fileInput').addEventListener('change', e => {
   r.onload = () => {
     try{
       const d = JSON.parse(r.result);
-      if(!d || !Array.isArray(d.objects)) throw 0;
-      pushUndo();
-      objects = d.objects;
-      skySettings.preset = d.sky && d.sky.preset || 'default';
-      skySel.value = skySettings.preset;
-      applyForgeSky();
-      nextId = objects.reduce((m,o)=>Math.max(m,o.id),0)+1;
-      select(null);
-      rebuildAll();
-      autosave();
-      toast(`loaded ${objects.length} objects`);
+      loadForgeDocument(d, f.name, f.name);
     }catch(err){ toast('could not read that file — is it a Forge .json?'); }
   };
   r.readAsText(f);
