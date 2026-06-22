@@ -1630,16 +1630,19 @@ function makeDecorPropGroup(kind, p, rng){
     setpieceBox(grp, 0.68, 0.18, 0.52, darkMat, 0, 0.43, 0);
     setpieceBox(grp, 0.58, 0.48, 0.48, steelMat, 0, 0.78, -0.03);
     const screenHex = safeHex(p.color) || '6aff7a';
-    const screenMat = new THREE.MeshBasicMaterial({color:parseInt(screenHex, 16)});
+    const glowOn = p.glow !== 'no';
+    const screenMat = new THREE.MeshBasicMaterial({color:glowOn ? parseInt(screenHex, 16) : 0x101510});
     const screen = setpieceBox(grp, 0.44, 0.28, 0.035, screenMat, 0, 0.8, -0.29);
     screen.userData.noShadows = true;
-    grp.userData.terminalGlow = {
-      mat:screenMat,
-      color:screenHex,
-      mode:String(p.mode || 'flow').toLowerCase(),
-      face:String(p.face || 'auto').toLowerCase(),
-      speed:clampNum(p.speed, 0, 8, 1)
-    };
+    if(glowOn){
+      grp.userData.terminalGlow = {
+        mat:screenMat,
+        color:screenHex,
+        mode:String(p.mode || 'flow').toLowerCase(),
+        face:String(p.face || 'auto').toLowerCase(),
+        speed:clampNum(p.speed, 0, 8, 1)
+      };
+    }
     setpieceBox(grp, 0.62, 0.08, 0.28, darkMat, 0, 0.21, -0.12);
   } else if(kind === 'floorfan'){
     setpieceCyl(grp, 0.035, 0.72, steelMat, 0, 0.42, 0, 8);

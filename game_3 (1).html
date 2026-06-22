@@ -4441,20 +4441,23 @@ function forgeDecorPropGroup(kind, p, rng){
     forgeSetpieceBox(grp, 0.68, 0.18, 0.52, darkMat, 0, 0.43, 0);
     forgeSetpieceBox(grp, 0.58, 0.48, 0.48, steelMat, 0, 0.78, -0.03);
     const screenHex = forgeCleanHex(p.color, '6aff7a');
-    const screenMat = new THREE.MeshBasicMaterial({color:parseInt(screenHex, 16)});
+    const glowOn = p.glow !== 'no';
+    const screenMat = new THREE.MeshBasicMaterial({color:glowOn ? parseInt(screenHex, 16) : 0x101510});
     const screen = forgeSetpieceBox(grp, 0.44, 0.28, 0.035, screenMat, 0, 0.8, -0.29);
     forgeNoFireShadow(screen);
-    grp.userData.terminalGlow = {
-      mat:screenMat,
-      color:screenHex,
-      mode:String(p.mode || 'flow').toLowerCase(),
-      face:String(p.face || 'auto').toLowerCase(),
-      glow:p.glow !== 'no',
-      speed:forgeTerminalNumber(p.speed, 1, 0, 8),
-      radius:forgeTerminalNumber(p.radius, 7, 1, 24),
-      bright:forgeTerminalNumber(p.bright, 0.55, 0, 3),
-      localPos:new THREE.Vector3(0, 0.84, -0.46)
-    };
+    if(glowOn){
+      grp.userData.terminalGlow = {
+        mat:screenMat,
+        color:screenHex,
+        mode:String(p.mode || 'flow').toLowerCase(),
+        face:String(p.face || 'auto').toLowerCase(),
+        glow:true,
+        speed:forgeTerminalNumber(p.speed, 1, 0, 8),
+        radius:forgeTerminalNumber(p.radius, 7, 1, 24),
+        bright:forgeTerminalNumber(p.bright, 0.55, 0, 3),
+        localPos:new THREE.Vector3(0, 0.84, -0.46)
+      };
+    }
     forgeSetpieceBox(grp, 0.62, 0.08, 0.28, darkMat, 0, 0.21, -0.12);
   } else if(kind === 'floorfan'){
     forgeSetpieceCyl(grp, 0.035, 0.72, steelMat, 0, 0.42, 0, 8);

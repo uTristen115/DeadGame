@@ -18,36 +18,102 @@
 
   /* ---------- overlays ---------- */
   .overlay{position:fixed;inset:0;display:flex;flex-direction:column;
-    align-items:center;justify-content:center;text-align:center;z-index:20;
-    background:radial-gradient(ellipse at center, rgba(11,14,12,.82) 0%, rgba(4,5,4,.96) 100%);}
+    align-items:stretch;justify-content:center;text-align:left;z-index:20;overflow:auto;
+    padding:28px 16px;background:
+      linear-gradient(180deg, rgba(4,5,4,.72) 0%, rgba(8,10,8,.95) 58%, rgba(2,3,2,.98) 100%),
+      radial-gradient(ellipse at 50% 14%, rgba(104,124,116,.18) 0%, rgba(104,124,116,0) 54%),
+      linear-gradient(90deg, rgba(45,12,14,.34), rgba(7,11,9,.88) 42%, rgba(48,43,25,.22));}
+  #start.overlay{background:
+      linear-gradient(90deg, rgba(2,3,2,.96) 0%, rgba(5,7,5,.88) 34%, rgba(5,7,5,.38) 55%, rgba(5,7,5,0) 78%),
+      linear-gradient(180deg, rgba(3,4,3,.18), rgba(3,4,3,.5));}
+  .overlay::before{content:"";position:absolute;inset:0;pointer-events:none;
+    background:
+      repeating-linear-gradient(0deg, rgba(255,255,255,.025) 0 1px, transparent 1px 5px),
+      linear-gradient(90deg, rgba(193,18,31,.12), transparent 24%, transparent 76%, rgba(122,132,80,.1));
+    mix-blend-mode:screen;opacity:.34;}
+  #start.overlay::before{background:
+      repeating-linear-gradient(0deg, rgba(255,255,255,.022) 0 1px, transparent 1px 5px),
+      linear-gradient(90deg, rgba(193,18,31,.14), rgba(193,18,31,.04) 36%, transparent 68%);
+    opacity:.28;}
+  .overlay::after{content:"";position:absolute;left:0;right:0;bottom:0;height:34%;
+    pointer-events:none;background:
+      linear-gradient(0deg, rgba(7,10,7,.96), rgba(7,10,7,0)),
+      repeating-linear-gradient(92deg, rgba(232,227,211,.035) 0 2px, transparent 2px 34px);
+    opacity:.75;}
+  #start.overlay::after{height:42%;background:linear-gradient(0deg, rgba(3,4,3,.46), rgba(3,4,3,0));opacity:1;}
+  .overlay > :not(.menuShell){position:relative;z-index:1;}
+  .menuShell{position:relative;z-index:1;width:100%;min-height:min(760px,100vh);
+    display:grid;grid-template-columns:minmax(300px, 38vw) minmax(360px, 1fr);
+    gap:30px;align-items:center;padding:34px 44px 34px 56px;}
+  .titleCard{grid-column:1;width:min(560px,100%);padding:0;}
+  .menuKicker{font-size:11px;letter-spacing:.36em;text-transform:uppercase;color:#cfc7a8;margin-bottom:8px;}
   .title{font-family:Impact,"Arial Narrow Bold",sans-serif;
-    font-size:clamp(44px,9vw,110px);letter-spacing:.06em;color:var(--blood);
+    font-size:clamp(58px, 7vw, 112px);letter-spacing:.06em;color:var(--blood);
     text-shadow:0 0 24px rgba(193,18,31,.55), 3px 3px 0 #000;line-height:.95;}
-  .subtitle{margin-top:6px;font-size:14px;letter-spacing:.55em;color:var(--rot);text-transform:uppercase;}
-  .controls{margin:34px 0 26px;font-size:15px;line-height:2;color:var(--bone);}
+  .subtitle{margin-top:8px;font-size:14px;letter-spacing:.45em;color:var(--rot);text-transform:uppercase;}
+  .menuHome{grid-column:1;width:min(520px,100%);display:grid;grid-template-columns:1fr;gap:5px;justify-items:start;}
+  .menuButton{position:relative;min-height:0;display:flex;flex-direction:column;align-items:flex-start;justify-content:center;
+    gap:2px;text-align:left;text-decoration:none;background:none;border:0;color:#e8e3d3;border-radius:0;
+    padding:5px 0;cursor:pointer;font-family:"Courier New",Courier,monospace;box-shadow:none;transition:color .18s ease;}
+  .menuButton::before{content:"";position:absolute;left:-28px;top:50%;width:0;height:1px;background:#c1121f;
+    transform:translateY(-50%);transition:width .18s ease, box-shadow .18s ease;}
+  .menuButton:hover,.menuButton:focus-visible{color:#fff;outline:none;}
+  .menuButton:hover::before,.menuButton:focus-visible::before{width:20px;box-shadow:0 0 12px rgba(193,18,31,.7);}
+  .menuButton span{font-family:Impact,"Arial Narrow Bold",sans-serif;font-size:clamp(27px,3vw,42px);
+    letter-spacing:.12em;text-transform:uppercase;text-shadow:2px 2px 0 #000;transition:color .18s ease,text-shadow .18s ease;}
+  .menuButton:hover span,.menuButton:focus-visible span{color:#ff2435;text-shadow:0 0 16px rgba(193,18,31,.65), 2px 2px 0 #000;}
+  .menuButton small{font-size:11px;letter-spacing:.16em;text-transform:uppercase;color:#9aa08c;line-height:1.35;
+    opacity:.56;transition:opacity .18s ease,color .18s ease;}
+  .menuButton:hover small,.menuButton:focus-visible small{opacity:1;color:#cfc7a8;}
+  .menuButton.primary,.menuButton.forge{background:none;border:0;}
+  .menuPanel{grid-column:1;width:min(560px,100%);border:1px solid rgba(122,132,80,.4);
+    border-radius:6px;background:linear-gradient(180deg, rgba(8,12,8,.82), rgba(5,7,5,.7));
+    padding:16px 18px;box-shadow:0 18px 50px rgba(0,0,0,.36), inset 0 0 0 1px rgba(232,227,211,.035);}
+  .panelHead{display:flex;align-items:flex-start;justify-content:space-between;gap:14px;margin-bottom:12px;text-align:left;}
+  .panelEyebrow{display:block;font-size:10px;letter-spacing:.3em;color:#7a8450;text-transform:uppercase;margin-bottom:3px;}
+  .panelHead h2{font-family:Impact,"Arial Narrow Bold",sans-serif;font-size:25px;letter-spacing:.12em;color:#e8e3d3;font-weight:normal;line-height:1;}
+  .panelBack{background:none;border:0;color:#9aa08c;border-radius:0;padding:7px 0;
+    cursor:pointer;font-family:"Courier New",Courier,monospace;font-size:11px;letter-spacing:.18em;}
+  .panelBack:hover{color:#e8e3d3;text-shadow:0 0 10px rgba(232,227,211,.45);}
+  .fieldPanel{display:grid;gap:14px;}
+  .fieldPanel .panelHead{border-bottom:1px solid rgba(122,132,80,.22);padding-bottom:12px;margin-bottom:0;}
+  .fieldPicker{display:grid;grid-template-columns:44px minmax(0,1fr) 44px;align-items:center;gap:10px;
+    min-height:106px;padding:13px 12px;border:1px solid rgba(57,64,47,.75);border-radius:5px;
+    background:linear-gradient(180deg, rgba(17,23,15,.78), rgba(8,11,8,.82));}
+  .controls{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:7px 12px;color:var(--bone);text-align:left;}
+  .controlItem{display:grid;grid-template-columns:78px minmax(0,1fr);align-items:center;gap:8px;min-height:31px;}
   .controls b{color:#fff;background:#1c211c;border:1px solid #39402f;border-radius:4px;
-    padding:1px 8px;margin-right:6px;display:inline-block;min-width:56px;}
-  .mapsel{display:flex;align-items:center;gap:14px;margin:6px 0 14px}
-  .mapArrow{font-size:24px;background:none;border:1px solid #3a4232;color:#cfc7a8;
-    width:44px;height:44px;cursor:pointer;border-radius:3px}
-  .mapArrow:hover{background:#1c211c;border-color:#7a8450}
-  .mapInfo{min-width:330px;text-align:center}
-  #mapName{font-family:Impact,"Arial Narrow Bold",sans-serif;font-size:26px;
-    letter-spacing:.14em;color:#e8e3d3}
-  #mapDesc{font-size:12px;letter-spacing:.18em;color:#7a8450;margin-top:4px;
-    text-transform:uppercase;min-height:15px}
-  .btn.ghost{font-size:17px;padding:8px 20px;background:none;border-color:#3a4232;color:#9aa08c}
-  .btn.ghost:hover{border-color:#7a8450;color:#e8e3d3}
-  .devrow{position:absolute;bottom:16px;right:18px}
-  .devrow button{background:none;border:1px dashed #3a4232;color:#5d654f;font-size:11px;
-    letter-spacing:.2em;padding:6px 10px;cursor:pointer;border-radius:3px}
-  .devrow button:hover{color:#cfc7a8;border-color:#7a8450}
-  .mpbox{margin:14px auto 18px;display:grid;gap:8px;width:min(620px,90vw)}
+    padding:3px 7px;display:inline-block;min-width:0;text-align:center;font-size:12px;letter-spacing:.08em;}
+  .controls span{font-size:12px;letter-spacing:.12em;text-transform:uppercase;color:#cfc7a8;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+  .mapsel{display:flex;align-items:center;gap:14px;margin:4px 0 10px}
+  .mapArrow{font-size:24px;background:none;border:0;color:#cfc7a8;
+    width:44px;height:44px;cursor:pointer;border-radius:4px;flex:0 0 auto;}
+  .mapArrow:hover{color:#fff;text-shadow:0 0 12px rgba(193,18,31,.55)}
+  .mapInfo{min-width:0;flex:1;text-align:left}
+  #mapName{font-family:Impact,"Arial Narrow Bold",sans-serif;font-size:28px;
+    letter-spacing:.1em;color:#e8e3d3;line-height:1.05;overflow-wrap:anywhere;}
+  #mapDesc{font-size:12px;letter-spacing:.16em;color:#7a8450;margin-top:4px;
+    text-transform:uppercase;min-height:15px;line-height:1.35;overflow-wrap:anywhere;}
+  .fieldPanel .devrow{justify-content:space-between;gap:12px;margin-top:0;border-top:1px solid rgba(122,132,80,.18);padding-top:11px;}
+  .fieldPanel .devrow button,.fieldPanel .devrow a{padding:4px 0;white-space:nowrap;}
+  .tutorialPanel{padding-top:13px;padding-bottom:13px;}
+  .tutorialPanel .panelHead{margin-bottom:10px;}
+  .tutorialPanel .panelHead h2{font-size:20px;}
+  .menuActions{grid-column:1;width:min(560px,100%);display:none;align-items:flex-start;justify-content:flex-start;gap:10px;flex-wrap:wrap;}
+  .btn.ghost{font-size:17px;padding:8px 20px;background:none;border:1px solid #3a4232;color:#9aa08c;box-shadow:none}
+  .btn.ghost:hover{border-color:#7a8450;color:#e8e3d3;background:#11170f}
+  .devrow{display:flex;justify-content:center;gap:10px;margin-top:12px;flex-wrap:wrap}
+  .devrow button,.devrow a{background:none;border:0;color:#9aa08c;font-size:11px;
+    letter-spacing:.18em;padding:7px 10px;cursor:pointer;border-radius:4px;text-decoration:none;font-family:"Courier New",Courier,monospace}
+  .devrow button:hover,.devrow a:hover{color:#cfc7a8;text-shadow:0 0 10px rgba(122,132,80,.55)}
+  .mpbox{display:grid;gap:8px;width:100%}
   .mprow{display:flex;gap:8px;justify-content:center;align-items:center;flex-wrap:wrap}
   .mpmini{background:#11170f;border:1px solid #39402f;color:#cfc7a8;
     font-family:"Courier New",Courier,monospace;font-size:12px;letter-spacing:.12em;
     padding:8px 11px;border-radius:3px}
   .mpmini:hover{border-color:#7a8450;color:#e8e3d3;background:#172014}
+  #start .mpmini{background:none;border:0;border-radius:0;padding:8px 6px;transition:color .18s ease,text-shadow .18s ease;}
+  #start .mpmini:hover{background:none;color:#fff;text-shadow:0 0 10px rgba(193,18,31,.55);}
   #mpJoinId{width:230px;background:#090d08;border:1px solid #39402f;color:#e8e3d3;
     padding:8px 10px;font-family:"Courier New",Courier,monospace;font-size:12px;
     letter-spacing:.08em;text-transform:none;border-radius:3px}
@@ -65,14 +131,47 @@
   .mpplayer b{color:#e8e3d3;font-weight:normal}
   .mpplayer .ready{color:#7a8450}
   .mpplayer .wait{color:#c1121f}
+  .settingsGrid{display:grid;gap:12px;text-align:left}
+  .settingRow{display:grid;grid-template-columns:1fr auto;gap:8px 14px;align-items:center;
+    border:1px solid #273022;background:#10160e;padding:12px;border-radius:5px}
+  .settingRow span{font-size:12px;letter-spacing:.18em;text-transform:uppercase;color:#cfc7a8}
+  .settingRow output{font-size:12px;color:#ffd27a;letter-spacing:.12em}
+  .settingRow input[type="range"]{grid-column:1 / -1;width:100%;accent-color:#c1121f}
+  .settingToggle{display:flex;align-items:center;justify-content:space-between;gap:12px;
+    border:1px solid #273022;background:#10160e;padding:12px;border-radius:5px}
+  .settingToggle span{font-size:12px;letter-spacing:.18em;text-transform:uppercase;color:#cfc7a8}
+  .settingToggle input{width:20px;height:20px;accent-color:#c1121f}
+  #start .btn{background:none;border:0;box-shadow:none;padding:6px 0;color:#e8e3d3;text-align:left;
+    transition:color .18s ease,text-shadow .18s ease;}
+  #start .btn:hover{background:none;color:#ff2435;text-shadow:0 0 16px rgba(193,18,31,.65);}
+  #start .btn.ghost{background:none;border:0;color:#9aa08c;}
+  #start .btn.ghost:hover{background:none;color:#e8e3d3;}
   .btn{font-family:Impact,"Arial Narrow Bold",sans-serif;font-size:26px;letter-spacing:.12em;
     color:var(--bone);background:var(--blood);border:none;padding:14px 46px;cursor:pointer;
-    box-shadow:0 0 0 3px #000, 0 0 28px rgba(193,18,31,.5);}
+    border-radius:4px;box-shadow:0 0 0 3px #000, 0 0 28px rgba(193,18,31,.5);}
   .btn:hover{background:#e01726;}
-  .hint{margin-top:16px;font-size:12px;color:#6d7563;}
+  .hint{grid-column:1;margin-top:12px;font-size:12px;color:#6d7563;letter-spacing:.08em;}
   #gameover{display:none;}
   #gameover .title{color:var(--bone);text-shadow:3px 3px 0 #000;}
   #finalStats{margin:18px 0 30px;font-size:18px;line-height:1.9;color:var(--rot);}
+  @media (max-width:920px){
+    .menuShell{grid-template-columns:1fr;gap:24px;padding:28px 24px;}
+  }
+  @media (max-width:720px){
+    .overlay{justify-content:flex-start;padding-top:18px;}
+    .titleCard{padding:0;}
+    .title{font-size:50px;}
+    .subtitle{font-size:12px;letter-spacing:.28em;}
+    .menuHome{grid-template-columns:1fr;}
+    .menuButton{min-height:70px;}
+    .panelHead{align-items:flex-start;flex-direction:column;}
+    .panelBack{align-self:flex-end;}
+    .mapsel{gap:8px;}
+    .mapArrow{width:40px;height:40px;}
+    #mapName{font-size:23px;}
+    .controls{grid-template-columns:1fr;}
+    .btn{width:100%;padding-left:16px;padding-right:16px;}
+  }
 
   /* ---------- HUD ---------- */
   #hud{position:fixed;inset:0;pointer-events:none;z-index:10;display:none;}
@@ -133,48 +232,126 @@
 
 <!-- START SCREEN -->
 <div id="start" class="overlay">
-  <div class="title">DEAD GAME</div>
-  <div class="subtitle">they come with the fog</div>
-  <div id="menuExtras">
-    <div class="mapsel">
-      <button class="mapArrow" id="mapPrev">&#9664;</button>
-      <div class="mapInfo">
-        <div id="mapName">HARVEST FACILITY</div>
-        <div id="mapDesc">the original derelict plant</div>
+  <div class="menuShell">
+    <div class="titleCard">
+      <div class="menuKicker">fog breach 03</div>
+      <div class="title">DEAD GAME</div>
+      <div class="subtitle">they come with the fog</div>
+    </div>
+
+    <div class="menuHome" id="mainMenu">
+      <button class="menuButton primary" id="singleBtn" type="button">
+        <span>Singleplayer</span>
+        <small>Choose a map and enter the field</small>
+      </button>
+      <button class="menuButton" id="multiBtn" type="button">
+        <span>Multiplayer</span>
+        <small>Host or join a room with friends</small>
+      </button>
+      <button class="menuButton" id="settingsBtn" type="button">
+        <span>Settings</span>
+        <small>Tune input and start options</small>
+      </button>
+      <a class="menuButton forge" id="forgeBtn" href="forge_3_1.html" target="_blank" rel="noopener">
+        <span>Forge</span>
+        <small>Build and export custom maps</small>
+      </a>
+    </div>
+
+    <div id="menuExtras" class="menuPanel fieldPanel" style="display:none">
+      <div class="panelHead">
+        <div>
+          <span class="panelEyebrow">map select</span>
+          <h2>Choose Your Field</h2>
+        </div>
+        <button class="panelBack" type="button" data-menu-home>BACK</button>
       </div>
-      <button class="mapArrow" id="mapNext">&#9654;</button>
-    </div>
-  </div>
-  <div class="controls">
-    <b>W A S D</b> move &nbsp;&nbsp; <b>MOUSE</b> aim &nbsp;&nbsp; <b>CLICK</b> fire (hold for auto)<br>
-    <b>SHIFT</b> sprint &nbsp;&nbsp; <b>R</b> reload &nbsp;&nbsp; <b>B</b> flashlight &nbsp;&nbsp; <b>1-7</b> weapons &nbsp;&nbsp; <b>E</b> interact &nbsp;&nbsp; <b>ESC</b> pause<br>
-    Earn points for kills. Spend them to open the facility doors, then<br>
-    restore the power deep inside to unlock perks and the weapon upgrade station.
-  </div>
-  <div class="mpbox">
-    <div class="mprow">
-      <button class="mpmini" id="mpHostBtn">HOST ROOM</button>
-      <input id="mpJoinId" placeholder="ROOM ID">
-      <button class="mpmini" id="mpJoinBtn">JOIN ROOM</button>
-      <button class="mpmini" id="mpLeaveBtn">LEAVE</button>
-    </div>
-    <div id="mpPeerId"></div>
-    <div id="mpStatus">MULTIPLAYER IDLE</div>
-    <div id="mpLobby" class="mplobby">
-      <div class="mplobbyHead"><span>LOBBY</span><span id="mpLobbyCount">0/0</span></div>
-      <div id="mpPlayers"></div>
-      <div class="mprow">
-        <button class="mpmini" id="mpReadyBtn">READY</button>
-        <button class="mpmini" id="mpStartBtn">START MATCH</button>
+      <div class="fieldPicker">
+        <button class="mapArrow" id="mapPrev" type="button">&#9664;</button>
+        <div class="mapInfo">
+          <div id="mapName">HARVEST FACILITY</div>
+          <div id="mapDesc">the original derelict plant</div>
+        </div>
+        <button class="mapArrow" id="mapNext" type="button">&#9654;</button>
+      </div>
+      <div class="devrow">
+        <button id="loadMapBtn" type="button">LOAD MAP .JSON</button>
+        <a href="forge_3_1.html" target="_blank" rel="noopener">OPEN FORGE</a>
+        <input type="file" id="mapFile" accept=".json,application/json" style="display:none">
       </div>
     </div>
-  </div>
-  <button class="btn" id="playBtn">ENTER THE FIELD</button>
-  <button class="btn ghost" id="quitBtn" style="display:none">QUIT TO MENU</button>
-  <div class="hint">Your mouse will be captured for aiming — press ESC any time to release it.</div>
-  <div class="devrow">
-    <button id="loadMapBtn">+ LOAD MAP .JSON</button>
-    <input type="file" id="mapFile" accept=".json,application/json" style="display:none">
+    <div id="singlePanel" class="menuPanel tutorialPanel" style="display:none">
+      <div class="panelHead">
+        <div>
+          <span class="panelEyebrow">quick controls</span>
+          <h2>Field Basics</h2>
+        </div>
+      </div>
+      <div class="controls">
+        <div class="controlItem"><b>WASD</b><span>Move</span></div>
+        <div class="controlItem"><b>Mouse</b><span>Aim</span></div>
+        <div class="controlItem"><b>Click</b><span>Fire</span></div>
+        <div class="controlItem"><b>Shift</b><span>Sprint</span></div>
+        <div class="controlItem"><b>R</b><span>Reload</span></div>
+        <div class="controlItem"><b>B</b><span>Flashlight</span></div>
+        <div class="controlItem"><b>1-7</b><span>Weapons</span></div>
+        <div class="controlItem"><b>E</b><span>Interact</span></div>
+        <div class="controlItem"><b>Esc</b><span>Pause</span></div>
+      </div>
+    </div>
+    <div id="multiplayerPanel" class="menuPanel" style="display:none">
+      <div class="panelHead">
+        <div>
+          <span class="panelEyebrow">multiplayer</span>
+          <h2>Room Terminal</h2>
+        </div>
+        <button class="panelBack" type="button" data-menu-home>BACK</button>
+      </div>
+      <div class="mpbox">
+        <div class="mprow">
+          <button class="mpmini" id="mpHostBtn" type="button">HOST ROOM</button>
+          <input id="mpJoinId" placeholder="ROOM ID">
+          <button class="mpmini" id="mpJoinBtn" type="button">JOIN ROOM</button>
+          <button class="mpmini" id="mpLeaveBtn" type="button">LEAVE</button>
+        </div>
+        <div id="mpPeerId"></div>
+        <div id="mpStatus">MULTIPLAYER IDLE</div>
+        <div id="mpLobby" class="mplobby">
+          <div class="mplobbyHead"><span>LOBBY</span><span id="mpLobbyCount">0/0</span></div>
+          <div id="mpPlayers"></div>
+          <div class="mprow">
+            <button class="mpmini" id="mpReadyBtn" type="button">READY</button>
+            <button class="mpmini" id="mpStartBtn" type="button">START MATCH</button>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div id="settingsPanel" class="menuPanel" style="display:none">
+      <div class="panelHead">
+        <div>
+          <span class="panelEyebrow">settings</span>
+          <h2>Field Tuning</h2>
+        </div>
+        <button class="panelBack" type="button" data-menu-home>BACK</button>
+      </div>
+      <div class="settingsGrid">
+        <label class="settingRow">
+          <span>Mouse sensitivity</span>
+          <output id="lookSensitivityValue">100%</output>
+          <input id="lookSensitivityRange" type="range" min="50" max="200" step="5" value="100">
+        </label>
+        <label class="settingToggle">
+          <span>Flashlight starts on</span>
+          <input id="flashlightDefaultToggle" type="checkbox" checked>
+        </label>
+      </div>
+    </div>
+
+    <div class="menuActions" id="menuActions">
+      <button class="btn" id="playBtn" type="button">START SINGLEPLAYER</button>
+      <button class="btn ghost" id="quitBtn" type="button" style="display:none">QUIT TO MENU</button>
+    </div>
+    <div class="hint">Your mouse will be captured for aiming - press ESC any time to release it.</div>
   </div>
 </div>
 
@@ -516,6 +693,76 @@ const mpUI = {
   lobby: $('mpLobby'), players: $('mpPlayers'), lobbyCount: $('mpLobbyCount'),
   ready: $('mpReadyBtn'), start: $('mpStartBtn'),
 };
+const menuUI = {
+  home: $('mainMenu'), map: $('menuExtras'), single: $('singlePanel'),
+  multi: $('multiplayerPanel'), settings: $('settingsPanel'), actions: $('menuActions'),
+  sensitivityRange: $('lookSensitivityRange'), sensitivityValue: $('lookSensitivityValue'),
+  flashlightDefault: $('flashlightDefaultToggle'),
+};
+let menuView = 'home';
+let lookSensitivity = LOOK_SENS;
+let defaultFlashlightOn = true;
+
+function showMenuPart(el, show, display){
+  if(el) el.style.display = show ? (display || '') : 'none';
+}
+function setMenuTitle(text){
+  const title = ui.start && ui.start.querySelector('.title');
+  if(title) title.textContent = text;
+}
+function setMenuView(view){
+  menuView = view;
+  const mapVisible = view === 'single' || view === 'multi';
+  showMenuPart(menuUI.home, view === 'home', 'grid');
+  showMenuPart(menuUI.map, mapVisible);
+  showMenuPart(menuUI.single, view === 'single');
+  showMenuPart(menuUI.multi, view === 'multi');
+  showMenuPart(menuUI.settings, view === 'settings');
+  showMenuPart(menuUI.actions, view === 'single' || view === 'pause', 'flex');
+  if(view !== 'pause'){
+    $('quitBtn').style.display = 'none';
+    $('playBtn').textContent = 'START SINGLEPLAYER';
+  }
+  if(view === 'home') setMenuTitle('DEAD GAME');
+  if($('loadMapBtn')) $('loadMapBtn').style.display = mapVisible ? '' : 'none';
+}
+function storageGet(key, fallback){
+  try{
+    const value = localStorage.getItem(key);
+    return value == null ? fallback : value;
+  }catch(e){
+    return fallback;
+  }
+}
+function storageSet(key, value){
+  try{ localStorage.setItem(key, value); }catch(e){}
+}
+function setLookSensitivityPercent(value, save){
+  const pct = Math.max(50, Math.min(200, Number(value) || 100));
+  lookSensitivity = LOOK_SENS * (pct / 100);
+  if(menuUI.sensitivityRange) menuUI.sensitivityRange.value = pct;
+  if(menuUI.sensitivityValue) menuUI.sensitivityValue.textContent = pct + '%';
+  if(save) storageSet('deadgame.lookSensitivity', String(pct));
+}
+function setDefaultFlashlight(on, save){
+  defaultFlashlightOn = !!on;
+  if(menuUI.flashlightDefault) menuUI.flashlightDefault.checked = defaultFlashlightOn;
+  if(!running){
+    flashlightOn = defaultFlashlightOn;
+    updateFlashlightRange();
+  }
+  if(save) storageSet('deadgame.flashlightDefault', defaultFlashlightOn ? '1' : '0');
+}
+function initMenuSettings(){
+  setLookSensitivityPercent(storageGet('deadgame.lookSensitivity', '100'), false);
+  setDefaultFlashlight(storageGet('deadgame.flashlightDefault', '1') !== '0', false);
+  if(menuUI.sensitivityRange){
+    menuUI.sensitivityRange.addEventListener('input', e => setLookSensitivityPercent(e.target.value, true));
+  }
+  if(menuUI.flashlightDefault){
+    menuUI.flashlightDefault.addEventListener('change', e => setDefaultFlashlight(e.target.checked, true));
+  }
+}
 
 // ------------------------- audio (procedural) -------------------------
 let actx = null;
@@ -4441,20 +4688,23 @@ function forgeDecorPropGroup(kind, p, rng){
     forgeSetpieceBox(grp, 0.68, 0.18, 0.52, darkMat, 0, 0.43, 0);
     forgeSetpieceBox(grp, 0.58, 0.48, 0.48, steelMat, 0, 0.78, -0.03);
     const screenHex = forgeCleanHex(p.color, '6aff7a');
-    const screenMat = new THREE.MeshBasicMaterial({color:parseInt(screenHex, 16)});
+    const glowOn = p.glow !== 'no';
+    const screenMat = new THREE.MeshBasicMaterial({color:glowOn ? parseInt(screenHex, 16) : 0x101510});
     const screen = forgeSetpieceBox(grp, 0.44, 0.28, 0.035, screenMat, 0, 0.8, -0.29);
     forgeNoFireShadow(screen);
-    grp.userData.terminalGlow = {
-      mat:screenMat,
-      color:screenHex,
-      mode:String(p.mode || 'flow').toLowerCase(),
-      face:String(p.face || 'auto').toLowerCase(),
-      glow:p.glow !== 'no',
-      speed:forgeTerminalNumber(p.speed, 1, 0, 8),
-      radius:forgeTerminalNumber(p.radius, 7, 1, 24),
-      bright:forgeTerminalNumber(p.bright, 0.55, 0, 3),
-      localPos:new THREE.Vector3(0, 0.84, -0.46)
-    };
+    if(glowOn){
+      grp.userData.terminalGlow = {
+        mat:screenMat,
+        color:screenHex,
+        mode:String(p.mode || 'flow').toLowerCase(),
+        face:String(p.face || 'auto').toLowerCase(),
+        glow:true,
+        speed:forgeTerminalNumber(p.speed, 1, 0, 8),
+        radius:forgeTerminalNumber(p.radius, 7, 1, 24),
+        bright:forgeTerminalNumber(p.bright, 0.55, 0, 3),
+        localPos:new THREE.Vector3(0, 0.84, -0.46)
+      };
+    }
     forgeSetpieceBox(grp, 0.62, 0.08, 0.28, darkMat, 0, 0.21, -0.12);
   } else if(kind === 'floorfan'){
     forgeSetpieceCyl(grp, 0.035, 0.72, steelMat, 0, 0.42, 0, 8);
@@ -6385,8 +6635,8 @@ addEventListener('mousemove', e => {
   }
   const dx = Math.max(-MAX_LOOK_DELTA, Math.min(MAX_LOOK_DELTA, rawX));
   const dy = Math.max(-MAX_LOOK_DELTA, Math.min(MAX_LOOK_DELTA, rawY));
-  player.yaw   -= dx * LOOK_SENS;
-  player.pitch -= dy * LOOK_SENS;
+  player.yaw   -= dx * lookSensitivity;
+  player.pitch -= dy * lookSensitivity;
   player.pitch = Math.max(-Math.PI/2+0.01, Math.min(Math.PI/2-0.01, player.pitch));
 });
 
@@ -6402,9 +6652,9 @@ document.addEventListener('pointerlockchange', () => {
     player.firing = false;
     for(const code of ['KeyW','KeyA','KeyS','KeyD','ShiftLeft','ShiftRight']) keys[code] = false;
     ui.start.style.display = 'flex';
-    ui.start.querySelector('.title').textContent = mpMatchRunning() ? 'MULTIPLAYER' : 'PAUSED';
+    setMenuView('pause');
+    setMenuTitle(mpMatchRunning() ? 'MULTIPLAYER' : 'PAUSED');
     $('playBtn').textContent = 'RESUME';
-    $('menuExtras').style.display = 'none';
     $('quitBtn').style.display = '';
     $('loadMapBtn').style.display = 'none';
   }
@@ -6471,6 +6721,12 @@ mpUI.joinId.addEventListener('paste', () => setTimeout(mpQueueAutoJoin, 0));
 mpUI.joinId.addEventListener('change', mpQueueAutoJoin);
 mpUI.ready.addEventListener('click', () => mpSetReady(!mp.ready));
 mpUI.start.addEventListener('click', mpHostStartMatch);
+$('singleBtn').addEventListener('click', () => setMenuView('single'));
+$('multiBtn').addEventListener('click', () => setMenuView('multi'));
+$('settingsBtn').addEventListener('click', () => setMenuView('settings'));
+document.querySelectorAll('[data-menu-home]').forEach(btn => {
+  btn.addEventListener('click', () => setMenuView('home'));
+});
 
 // ------------------------- main menu / maps -------------------------
 let mapIndex = 0;
@@ -6539,11 +6795,8 @@ function backToMenu(){
   paused = false;
   ui.over.style.display = 'none';
   ui.start.style.display = 'flex';
-  ui.start.querySelector('.title').textContent = 'DEAD GAME';
-  $('playBtn').textContent = 'ENTER THE FIELD';
-  $('quitBtn').style.display = 'none';
-  $('menuExtras').style.display = '';
-  $('loadMapBtn').style.display = '';
+  setMenuTitle('DEAD GAME');
+  setMenuView('home');
   updateMapUI();
 }
 $('menuBtn').addEventListener('click', backToMenu);
@@ -7375,11 +7628,18 @@ function resetGame(begin = true){
     regenDelay:REGEN_DELAY, regenRate:REGEN_RATE,
     perks:{}, gunUpgraded:false,
   });
-  flashlightOn = true;
+  flashlightOn = defaultFlashlightOn;
   updateFlashlightRange();
   const sp = mapSpawn(mp.localSlot || 0);
   player.pos.set(sp[0], PLAYER_HEIGHT, sp[1]);
   player.yaw = ((sp[2] || 0) * Math.PI) / 180;   // forge "facing" degrees
+  if(camera){
+    camera.position.copy(player.pos);
+    camera.position.y = PLAYER_HEIGHT + player.floorY;
+    camera.rotation.order = 'YXZ';
+    camera.rotation.y = player.yaw;
+    camera.rotation.x = player.pitch;
+  }
   player.vel.set(0,0,0);
   setWeaponUpgradeVisual(false);
   applyWeaponStats(true);
@@ -7754,10 +8014,13 @@ function animate(){
 initEngine();
 loadMap(MAPS[0]);
 resetGame(false);
+initMenuSettings();
+setMenuView('home');
 updateMapUI();
 applyWeaponStats(true);
 const bootJoinId = mpUrlJoinId();
 if(bootJoinId){
+  setMenuView('multi');
   mpUI.joinId.value = bootJoinId;
   setTimeout(() => mpJoinHost(bootJoinId), 300);
 }
