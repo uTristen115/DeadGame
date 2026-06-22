@@ -1,0 +1,1235 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Cold Steel 1911 — Cinematic 3D Showcase</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Rajdhani:wght@300;400;500;600&display=swap');
+
+  *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    overflow: hidden;
+    background: #06080c;
+    font-family: 'Rajdhani', 'Segoe UI', system-ui, sans-serif;
+    color: #c8d0e0;
+    user-select: none;
+    -webkit-user-select: none;
+  }
+  #canvas-container { position: fixed; inset: 0; z-index: 0; }
+  canvas { display: block; width: 100%; height: 100%; }
+
+  /* Vignette overlay */
+  #vignette {
+    position: fixed; inset: 0; z-index: 1; pointer-events: none;
+    background: radial-gradient(ellipse at center, transparent 50%, rgba(4,6,10,0.7) 100%);
+  }
+
+  /* Scanline overlay (subtle) */
+  #scanlines {
+    position: fixed; inset: 0; z-index: 2; pointer-events: none; opacity: 0.03;
+    background: repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(0,0,0,0.3) 2px, rgba(0,0,0,0.3) 4px);
+  }
+
+  /* Title */
+  #title-bar {
+    position: fixed; top: 28px; left: 50%; transform: translateX(-50%);
+    z-index: 10; text-align: center; pointer-events: none;
+  }
+  #title-bar h1 {
+    font-size: 26px; font-weight: 300; letter-spacing: 10px; text-transform: uppercase;
+    color: #7aadd4;
+    text-shadow: 0 0 30px rgba(100,160,220,0.3), 0 0 60px rgba(80,140,200,0.1);
+  }
+  #title-bar .subtitle {
+    font-size: 11px; letter-spacing: 5px; color: #3a4a5a; margin-top: 6px;
+    text-transform: uppercase; font-weight: 400;
+  }
+  #title-bar .line {
+    width: 60px; height: 1px; background: linear-gradient(90deg, transparent, #3a5a7a, transparent);
+    margin: 8px auto 0;
+  }
+
+  /* Controls panel */
+  #controls-panel {
+    position: fixed; bottom: 32px; left: 50%; transform: translateX(-50%);
+    z-index: 10; display: flex; align-items: center; gap: 16px;
+  }
+  .btn {
+    padding: 11px 32px; border: 1px solid rgba(110,150,200,0.25);
+    background: rgba(12,16,24,0.9); color: #7aadd4; font-size: 13px;
+    letter-spacing: 3px; text-transform: uppercase; cursor: pointer;
+    border-radius: 2px; transition: all 0.3s ease; backdrop-filter: blur(12px);
+    font-family: 'Rajdhani', sans-serif; font-weight: 500;
+    position: relative; overflow: hidden;
+  }
+  .btn::before {
+    content: ''; position: absolute; inset: 0;
+    background: linear-gradient(135deg, rgba(100,160,220,0.08), transparent);
+    opacity: 0; transition: opacity 0.3s;
+  }
+  .btn:hover::before { opacity: 1; }
+  .btn:hover {
+    border-color: rgba(110,150,200,0.5);
+    box-shadow: 0 0 25px rgba(80,140,200,0.12), inset 0 0 15px rgba(80,140,200,0.05);
+    color: #a0ccee;
+  }
+  .btn:active { transform: scale(0.97); }
+  .btn-fire {
+    background: rgba(180,50,30,0.12); border-color: rgba(200,90,70,0.35);
+    color: #d4947a;
+  }
+  .btn-fire:hover {
+    background: rgba(200,50,30,0.2); border-color: rgba(200,90,70,0.6);
+    box-shadow: 0 0 25px rgba(200,70,40,0.15), inset 0 0 15px rgba(200,70,40,0.05);
+    color: #eeb09a;
+  }
+
+  /* Info panel */
+  #info-panel {
+    position: fixed; top: 28px; right: 28px; z-index: 10;
+    background: rgba(8,12,18,0.92); border: 1px solid rgba(100,140,190,0.12);
+    border-radius: 3px; padding: 18px 22px; backdrop-filter: blur(14px);
+    min-width: 195px;
+  }
+  #info-panel h3 {
+    font-size: 11px; letter-spacing: 3px; text-transform: uppercase;
+    color: #5a7a9a; margin-bottom: 12px; border-bottom: 1px solid rgba(100,140,190,0.08);
+    padding-bottom: 10px; font-weight: 500;
+  }
+  #info-panel ul { list-style: none; }
+  #info-panel li {
+    font-size: 12px; color: #4a5a6a; margin-bottom: 7px; display: flex;
+    align-items: center; gap: 8px; font-weight: 400;
+  }
+  #info-panel li span {
+    display: inline-block; padding: 2px 8px; background: rgba(100,150,200,0.08);
+    border: 1px solid rgba(100,150,200,0.1); border-radius: 2px;
+    color: #7aadd4; font-size: 10px; font-family: 'Rajdhani', monospace;
+    font-weight: 500; letter-spacing: 1px; min-width: 44px; text-align: center;
+  }
+
+  /* Status indicator */
+  #status {
+    position: fixed; bottom: 32px; right: 28px; z-index: 10;
+    font-size: 10px; letter-spacing: 2px; color: #2a3a4a;
+    text-transform: uppercase;
+  }
+  #status .dot {
+    display: inline-block; width: 6px; height: 6px; background: #3a6a3a;
+    border-radius: 50%; margin-right: 6px; animation: pulse 2s infinite;
+  }
+  @keyframes pulse {
+    0%, 100% { opacity: 0.4; } 50% { opacity: 1; }
+  }
+
+  /* Loading screen */
+  #loading {
+    position: fixed; inset: 0; z-index: 100; background: #06080c;
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    transition: opacity 1s ease;
+  }
+  #loading.hidden { opacity: 0; pointer-events: none; }
+  #loading h2 {
+    font-size: 14px; letter-spacing: 6px; text-transform: uppercase;
+    color: #5a7a9a; margin-bottom: 24px; font-weight: 400;
+  }
+  .loader-bar {
+    width: 180px; height: 1px; background: rgba(100,140,190,0.1);
+    border-radius: 1px; overflow: hidden;
+  }
+  .loader-bar-inner {
+    width: 0%; height: 100%; background: linear-gradient(90deg, #3a5a7a, #7aadd4);
+    animation: load 2.2s ease-in-out forwards;
+  }
+  @keyframes load { to { width: 100%; } }
+
+  /* Muzzle flash overlay */
+  #flash-overlay {
+    position: fixed; inset: 0; z-index: 3; pointer-events: none;
+    background: radial-gradient(circle at 60% 40%, rgba(255,180,80,0.18), transparent 50%);
+    opacity: 0; transition: opacity 0.04s;
+  }
+</style>
+</head>
+<body>
+
+<!-- Loading Screen -->
+<div id="loading">
+  <h2>Initializing Showcase</h2>
+  <div class="loader-bar"><div class="loader-bar-inner"></div></div>
+</div>
+
+<!-- Overlays -->
+<div id="flash-overlay"></div>
+<div id="vignette"></div>
+<div id="scanlines"></div>
+
+<!-- Title -->
+<div id="title-bar">
+  <h1>Cold Steel 1911</h1>
+  <div class="subtitle">Interactive 3D Art Model</div>
+  <div class="line"></div>
+</div>
+
+<!-- Controls -->
+<div id="controls-panel">
+  <button class="btn btn-fire" id="btn-fire">⚡ Fire</button>
+  <button class="btn" id="btn-reset">↻ Reset View</button>
+</div>
+
+<!-- Info Panel -->
+<div id="info-panel">
+  <h3>Controls</h3>
+  <ul>
+    <li><span>Drag</span> Rotate view</li>
+    <li><span>Scroll</span> Zoom</li>
+    <li><span>Space</span> Fire</li>
+    <li><span>R</span> Reset view</li>
+  </ul>
+</div>
+
+<!-- Status -->
+<div id="status">
+  <span class="dot"></span> Showcase Active
+</div>
+
+<!-- 3D Canvas -->
+<div id="canvas-container"></div>
+
+<!-- Three.js via importmap -->
+<script type="importmap">
+{
+  "imports": {
+    "three": "https://unpkg.com/three@0.162.0/build/three.module.js",
+    "three/addons/": "https://unpkg.com/three@0.162.0/examples/jsm/"
+  }
+}
+</script>
+
+<script type="module">
+import * as THREE from 'three';
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
+import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
+import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js';
+import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
+
+/* ═══════════════════════════════════════════
+   SCENE SETUP
+   ═══════════════════════════════════════════ */
+const container = document.getElementById('canvas-container');
+const renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: 'high-performance' });
+renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+renderer.setSize(window.innerWidth, window.innerHeight);
+renderer.shadowMap.enabled = true;
+renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+renderer.toneMapping = THREE.ACESFilmicToneMapping;
+renderer.toneMappingExposure = 1.05;
+renderer.outputColorSpace = THREE.SRGBColorSpace;
+container.appendChild(renderer.domElement);
+
+const scene = new THREE.Scene();
+scene.background = new THREE.Color(0x060810);
+scene.fog = new THREE.FogExp2(0x060810, 0.028);
+
+const camera = new THREE.PerspectiveCamera(38, window.innerWidth / window.innerHeight, 0.1, 100);
+camera.position.set(4.5, 2.8, 5.5);
+
+// Orbit Controls
+const controls = new OrbitControls(camera, renderer.domElement);
+controls.enableDamping = true;
+controls.dampingFactor = 0.05;
+controls.minDistance = 2.5;
+controls.maxDistance = 14;
+controls.target.set(0, 0.15, 0);
+controls.maxPolarAngle = Math.PI * 0.78;
+controls.autoRotate = true;
+controls.autoRotateSpeed = 0.35;
+controls.enablePan = false;
+
+/* ═══════════════════════════════════════════
+   POST-PROCESSING
+   ═══════════════════════════════════════════ */
+const composer = new EffectComposer(renderer);
+composer.addPass(new RenderPass(scene, camera));
+
+const bloomPass = new UnrealBloomPass(
+  new THREE.Vector2(window.innerWidth, window.innerHeight),
+  0.4, 0.5, 0.82
+);
+composer.addPass(bloomPass);
+composer.addPass(new OutputPass());
+
+/* ═══════════════════════════════════════════
+   MATERIALS — Cold frosted gunmetal palette
+   ═══════════════════════════════════════════ */
+function gunMetal(color = 0x3a4050, rough = 0.28, metal = 0.93) {
+  return new THREE.MeshStandardMaterial({
+    color, roughness: rough, metalness: metal, envMapIntensity: 1.8,
+  });
+}
+function gunMPhys(color = 0x3a4050, rough = 0.28, metal = 0.93) {
+  return new THREE.MeshPhysicalMaterial({
+    color, roughness: rough, metalness: metal, envMapIntensity: 2.0,
+    clearcoat: 0.15, clearcoatRoughness: 0.4,
+  });
+}
+
+const matSlide    = gunMPhys(0x384452, 0.22, 0.94);
+const matFrame    = gunMPhys(0x2c3642, 0.28, 0.92);
+const matBarrel   = gunMPhys(0x48525e, 0.18, 0.95);
+const matTrigger  = gunMetal(0x556070, 0.20, 0.94);
+const matHammer   = gunMetal(0x3e4852, 0.22, 0.93);
+const matSafety   = gunMetal(0x4a5868, 0.24, 0.92);
+const matAccent   = gunMetal(0x607080, 0.26, 0.90);
+
+const matGrip = new THREE.MeshPhysicalMaterial({
+  color: 0x141820, roughness: 0.75, metalness: 0.08,
+  clearcoat: 0.05, clearcoatRoughness: 0.8,
+});
+
+const matScrews = new THREE.MeshStandardMaterial({
+  color: 0x687888, roughness: 0.25, metalness: 0.96,
+});
+
+const matBlack = new THREE.MeshStandardMaterial({
+  color: 0x0e1218, roughness: 0.65, metalness: 0.45,
+});
+
+const matDarkSteel = new THREE.MeshStandardMaterial({
+  color: 0x1a2028, roughness: 0.45, metalness: 0.7,
+});
+
+const matFlashCore = new THREE.MeshBasicMaterial({
+  color: 0xffeedd, transparent: true, opacity: 0, side: THREE.DoubleSide,
+});
+const matFlashOuter = new THREE.MeshBasicMaterial({
+  color: 0xffaa44, transparent: true, opacity: 0, side: THREE.DoubleSide,
+});
+
+const matCasing = new THREE.MeshStandardMaterial({
+  color: 0xc89840, roughness: 0.22, metalness: 0.92,
+});
+
+/* ═══════════════════════════════════════════
+   ENVIRONMENT MAP (procedural studio HDR)
+   ═══════════════════════════════════════════ */
+const pmrem = new THREE.PMREMGenerator(renderer);
+const envScene = new THREE.Scene();
+
+// Dark studio backdrop
+envScene.add(new THREE.Mesh(
+  new THREE.SphereGeometry(50, 64, 32),
+  new THREE.MeshBasicMaterial({ color: 0x141c28, side: THREE.BackSide })
+));
+
+// Bright reflection sources (simulated softboxes)
+const reflectionSpots = [
+  { pos: [30, 25, 10],  color: 0x506888, size: 8 },
+  { pos: [-25, 20, -15], color: 0x3a5070, size: 6 },
+  { pos: [5, 35, -20],  color: 0x607898, size: 10 },
+  { pos: [-15, 10, 30],  color: 0x405878, size: 5 },
+  { pos: [20, -5, 25],  color: 0x2a3a50, size: 4 },
+  { pos: [0, 40, 5],    color: 0x7898b8, size: 12 },
+  { pos: [-30, 15, 15], color: 0x4a6888, size: 7 },
+  { pos: [10, 5, -35],  color: 0x384858, size: 5 },
+  // Warm highlight
+  { pos: [25, 30, -5],  color: 0x887060, size: 4 },
+  { pos: [-10, -10, -30], color: 0x2a3848, size: 6 },
+];
+reflectionSpots.forEach(s => {
+  const m = new THREE.Mesh(
+    new THREE.SphereGeometry(s.size, 12, 8),
+    new THREE.MeshBasicMaterial({ color: s.color })
+  );
+  m.position.set(...s.pos);
+  envScene.add(m);
+});
+
+scene.environment = pmrem.fromScene(envScene, 0.04).texture;
+
+/* ═══════════════════════════════════════════
+   LIGHTING — Dramatic studio setup
+   ═══════════════════════════════════════════ */
+
+// Key light — slightly warm, from upper right
+const keyLight = new THREE.SpotLight(0xc8d4e8, 90, 35, Math.PI * 0.14, 0.55, 1.4);
+keyLight.position.set(6, 7, 5);
+keyLight.castShadow = true;
+keyLight.shadow.mapSize.set(2048, 2048);
+keyLight.shadow.bias = -0.0008;
+keyLight.shadow.radius = 3;
+scene.add(keyLight);
+scene.add(keyLight.target);
+
+// Fill light — cool blue from left
+const fillLight = new THREE.SpotLight(0x3870b0, 35, 28, Math.PI * 0.22, 0.65, 1.4);
+fillLight.position.set(-7, 4, -2);
+scene.add(fillLight);
+
+// Rim light — strong cold blue edge from behind-left
+const rimLight = new THREE.SpotLight(0x5888c0, 65, 22, Math.PI * 0.10, 0.35, 1.1);
+rimLight.position.set(-4, 5, 7);
+scene.add(rimLight);
+
+// Back rim — subtle definition
+const backRim = new THREE.SpotLight(0x4a70a0, 40, 20, Math.PI * 0.12, 0.35, 1.3);
+backRim.position.set(3, 3, -7);
+scene.add(backRim);
+
+// Under-glow accent
+const underGlow = new THREE.PointLight(0x253550, 10, 10);
+underGlow.position.set(0, -2.5, 0);
+scene.add(underGlow);
+
+// Top soft fill
+const topFill = new THREE.PointLight(0x3a5070, 15, 15);
+topFill.position.set(0, 6, 0);
+scene.add(topFill);
+
+// Ambient
+scene.add(new THREE.AmbientLight(0x121828, 0.5));
+
+/* ═══════════════════════════════════════════
+   GROUND PLANE — dark reflective surface
+   ═══════════════════════════════════════════ */
+const ground = new THREE.Mesh(
+  new THREE.PlaneGeometry(40, 40),
+  new THREE.MeshPhysicalMaterial({
+    color: 0x080c14, roughness: 0.25, metalness: 0.65,
+    clearcoat: 0.3, clearcoatRoughness: 0.4,
+  })
+);
+ground.rotation.x = -Math.PI / 2;
+ground.position.y = -1.42;
+ground.receiveShadow = true;
+scene.add(ground);
+
+// Subtle grid lines on ground
+const gridHelper = new THREE.GridHelper(20, 40, 0x121828, 0x0e1420);
+gridHelper.position.y = -1.41;
+gridHelper.material.opacity = 0.3;
+gridHelper.material.transparent = true;
+scene.add(gridHelper);
+
+/* ═══════════════════════════════════════════
+   BUILDER HELPERS
+   ═══════════════════════════════════════════ */
+function box(w, h, d, mat, px=0, py=0, pz=0, rx=0, ry=0, rz=0) {
+  const m = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), mat);
+  m.position.set(px, py, pz);
+  if (rx||ry||rz) m.rotation.set(rx, ry, rz);
+  m.castShadow = true; m.receiveShadow = true;
+  return m;
+}
+function cyl(rt, rb, h, seg, mat, px=0, py=0, pz=0, rx=0, ry=0, rz=0) {
+  const m = new THREE.Mesh(new THREE.CylinderGeometry(rt, rb, h, seg), mat);
+  m.position.set(px, py, pz);
+  if (rx||ry||rz) m.rotation.set(rx, ry, rz);
+  m.castShadow = true; m.receiveShadow = true;
+  return m;
+}
+function sphere(r, ws, hs, mat, px=0, py=0, pz=0) {
+  const m = new THREE.Mesh(new THREE.SphereGeometry(r, ws, hs), mat);
+  m.position.set(px, py, pz);
+  m.castShadow = true;
+  return m;
+}
+
+/* ═══════════════════════════════════════════
+   BUILD THE 1911 MODEL
+   All geometry is artistic / stylized.
+   No real-world specs, tolerances, or
+   mechanical accuracy is intended.
+   ═══════════════════════════════════════════ */
+const gunGroup = new THREE.Group();
+scene.add(gunGroup);
+
+// === SLIDE GROUP (moves during fire) ===
+const slideGroup = new THREE.Group();
+gunGroup.add(slideGroup);
+
+// Main slide body — the long top portion
+slideGroup.add(box(2.55, 0.44, 0.58, matSlide, 0.05, 0.66, 0));
+
+// Slide front nose
+slideGroup.add(box(0.28, 0.40, 0.56, matSlide, 1.42, 0.66, 0));
+
+// Slide top flat with subtle height
+slideGroup.add(box(2.70, 0.03, 0.44, matSlide, 0.08, 0.89, 0));
+
+// Slide bottom rail interface
+slideGroup.add(box(2.40, 0.04, 0.52, matDarkSteel, 0.05, 0.43, 0));
+
+// === Rear Serrations (cocking serrations) ===
+for (let i = 0; i < 14; i++) {
+  slideGroup.add(box(0.012, 0.38, 0.60, matBlack, -0.88 - i*0.032, 0.66, 0));
+}
+
+// === Front Serrations ===
+for (let i = 0; i < 8; i++) {
+  slideGroup.add(box(0.010, 0.34, 0.58, matBlack, 1.10 + i*0.030, 0.66, 0));
+}
+
+// === Slide side flats and decorative lines ===
+for (let s = -1; s <= 1; s += 2) {
+  // Upper line
+  slideGroup.add(box(2.2, 0.015, 0.004, matDarkSteel, 0.05, 0.76, s*0.29));
+  // Lower line
+  slideGroup.add(box(2.2, 0.015, 0.004, matDarkSteel, 0.05, 0.56, s*0.29));
+  // Top bevel edge
+  const bevel = box(2.7, 0.015, 0.015, matSlide, 0.08, 0.875, s*0.225);
+  bevel.rotation.x = Math.PI/4;
+  slideGroup.add(bevel);
+}
+
+// === Slide top cocking indicator groove ===
+slideGroup.add(box(0.8, 0.008, 0.06, matBlack, -0.2, 0.905, 0));
+
+// === EJECTION PORT ===
+slideGroup.add(box(0.38, 0.05, 0.32, matBlack, -0.10, 0.885, 0.08));
+slideGroup.add(box(0.32, 0.07, 0.26, matBlack, -0.10, 0.875, 0.12));
+// Extractor detail
+slideGroup.add(box(0.40, 0.03, 0.04, matAccent, -0.10, 0.88, 0.28));
+
+// === BARREL & BUSHING ===
+// Barrel bushing outer
+slideGroup.add(cyl(0.19, 0.20, 0.14, 28, matBarrel, 1.60, 0.66, 0, 0, 0, Math.PI/2));
+// Barrel bushing ring
+slideGroup.add(cyl(0.21, 0.21, 0.018, 28, matSlide, 1.54, 0.66, 0, 0, 0, Math.PI/2));
+// Barrel
+slideGroup.add(cyl(0.145, 0.145, 0.22, 28, matBarrel, 1.67, 0.66, 0, 0, 0, Math.PI/2));
+// Barrel crown (slight taper)
+slideGroup.add(cyl(0.135, 0.145, 0.04, 28, matBarrel, 1.79, 0.66, 0, 0, 0, Math.PI/2));
+// Bore (dark hole)
+slideGroup.add(cyl(0.085, 0.085, 0.26, 22, matBlack, 1.72, 0.66, 0, 0, 0, Math.PI/2));
+// Inner rifling hint (decorative ring)
+slideGroup.add(cyl(0.09, 0.09, 0.008, 22, matDarkSteel, 1.78, 0.66, 0, 0, 0, Math.PI/2));
+
+// === FRONT SIGHT ===
+// Dovetail base
+slideGroup.add(box(0.08, 0.04, 0.16, matBlack, 1.22, 0.91, 0));
+// Blade
+slideGroup.add(box(0.04, 0.09, 0.08, matBlack, 1.22, 0.96, 0));
+// Tritium dot
+slideGroup.add(sphere(0.015, 8, 8,
+  new THREE.MeshBasicMaterial({ color: 0x99ddff }), 1.22, 1.01, 0));
+
+// === REAR SIGHT ===
+slideGroup.add(box(0.14, 0.12, 0.34, matBlack, -0.82, 0.95, 0));
+// Notch cutout
+slideGroup.add(box(0.16, 0.05, 0.12, matSlide, -0.82, 1.02, 0));
+// Side serrations on rear sight
+for (let i = 0; i < 5; i++) {
+  slideGroup.add(box(0.003, 0.10, 0.35, matDarkSteel, -0.82 + (i-2)*0.022, 0.95, 0));
+}
+// Tritium dots
+const dotMat = new THREE.MeshBasicMaterial({ color: 0x99ddff });
+slideGroup.add(sphere(0.013, 8, 8, dotMat, -0.82, 0.97, -0.12));
+slideGroup.add(sphere(0.013, 8, 8, dotMat, -0.82, 0.97, 0.12));
+
+// === Firing pin stop plate (rear of slide) ===
+slideGroup.add(box(0.04, 0.38, 0.48, matDarkSteel, -1.34, 0.66, 0));
+slideGroup.add(box(0.02, 0.32, 0.42, matFrame, -1.36, 0.66, 0));
+
+// ─── FRAME (lower) ───────────────────────
+const frameGroup = new THREE.Group();
+gunGroup.add(frameGroup);
+
+// Frame main body
+frameGroup.add(box(1.85, 0.36, 0.54, matFrame, 0.02, 0.24, 0));
+
+// Dust cover / front frame extension
+frameGroup.add(box(0.75, 0.20, 0.52, matFrame, 0.95, 0.34, 0));
+
+// Frame rail interface (where slide sits)
+frameGroup.add(box(1.70, 0.035, 0.56, matFrame, 0.08, 0.43, 0));
+
+// Frame bottom edge
+frameGroup.add(box(1.50, 0.025, 0.53, matFrame, -0.05, 0.06, 0));
+
+// ─── SLIDE STOP ───
+frameGroup.add(cyl(0.042, 0.042, 0.06, 14, matAccent, 0.32, 0.50, 0.31));
+frameGroup.add(box(0.28, 0.04, 0.025, matAccent, 0.32, 0.48, 0.33));
+// Checkered tip
+frameGroup.add(cyl(0.035, 0.035, 0.015, 10, matBlack, 0.46, 0.48, 0.33));
+
+// ─── TRIGGER GUARD ───
+const tgGroup = new THREE.Group();
+frameGroup.add(tgGroup);
+
+// Front vertical wall
+tgGroup.add(box(0.055, 0.52, 0.50, matFrame, 0.58, -0.06, 0));
+// Bottom bar
+tgGroup.add(box(0.58, 0.055, 0.50, matFrame, 0.30, -0.30, 0));
+// Back wall
+tgGroup.add(box(0.055, 0.34, 0.50, matFrame, 0.04, -0.08, 0));
+// Inner rounded corners (front)
+tgGroup.add(cyl(0.04, 0.04, 0.48, 12, matFrame, 0.55, -0.26, 0, Math.PI/2, 0, 0));
+// Inner rounded corner (back)
+tgGroup.add(cyl(0.04, 0.04, 0.48, 12, matFrame, 0.07, -0.24, 0, Math.PI/2, 0, 0));
+
+// Trigger guard front checkering
+for (let i = 0; i < 8; i++) {
+  tgGroup.add(box(0.057, 0.008, 0.51, matBlack, 0.58, 0.02 - i*0.035, 0));
+}
+
+// ─── TRIGGER ───
+const triggerGroup = new THREE.Group();
+triggerGroup.position.set(0.28, 0.02, 0);
+frameGroup.add(triggerGroup);
+
+// Trigger body
+triggerGroup.add(box(0.035, 0.30, 0.10, matTrigger, 0, -0.05, 0));
+// Trigger shoe (curved face)
+triggerGroup.add(box(0.018, 0.12, 0.12, matTrigger, 0.028, -0.10, 0));
+// Trigger overtravel stop screw
+triggerGroup.add(cyl(0.012, 0.012, 0.04, 8, matScrews, 0.028, -0.04, 0, Math.PI/2, 0, 0));
+// Trigger serrations
+for (let i = 0; i < 6; i++) {
+  triggerGroup.add(box(0.002, 0.012, 0.13, matBlack, 0.038, -0.06 - i*0.018, 0));
+}
+// Trigger bow (connects to frame)
+triggerGroup.add(box(0.025, 0.06, 0.04, matTrigger, -0.01, 0.12, 0));
+
+// Trigger pivot pin
+frameGroup.add(cyl(0.018, 0.018, 0.58, 12, matScrews, 0.28, 0.10, 0, Math.PI/2, 0, 0));
+
+// ─── HAMMER ───
+const hammerGroup = new THREE.Group();
+hammerGroup.position.set(-1.02, 0.74, 0);
+gunGroup.add(hammerGroup);
+
+// Hammer pivot body
+hammerGroup.add(cyl(0.075, 0.065, 0.22, 14, matHammer));
+// Hammer spur (the part you thumb)
+hammerGroup.add(box(0.075, 0.28, 0.18, matHammer, 0, 0.16, 0));
+// Hammer spur taper
+hammerGroup.add(box(0.06, 0.06, 0.20, matHammer, 0, 0.32, 0));
+// Hammer spur checkering
+for (let i = 0; i < 8; i++) {
+  hammerGroup.add(box(0.08, 0.006, 0.19, matBlack, 0, 0.20 + i*0.018, 0));
+}
+// Hammer strut (visible portion)
+hammerGroup.add(box(0.03, 0.12, 0.06, matDarkSteel, 0.02, -0.10, 0));
+// Set to cocked
+hammerGroup.rotation.z = -0.55;
+
+// ─── GRIP SAFETY / BEAVERTAIL ───
+const gripSafetyGroup = new THREE.Group();
+gunGroup.add(gripSafetyGroup);
+
+// Beavertail upper
+gripSafetyGroup.add(box(0.48, 0.14, 0.50, matFrame, -1.08, 0.52, 0));
+// Beavertail extension (upswept tail)
+const btExt = box(0.22, 0.10, 0.46, matFrame, -1.36, 0.58, 0);
+btExt.rotation.z = 0.22;
+gripSafetyGroup.add(btExt);
+// Beavertail bump
+gripSafetyGroup.add(sphere(0.06, 10, 8, matFrame, -1.46, 0.60, 0));
+
+// Back strap
+gripSafetyGroup.add(box(0.10, 0.68, 0.48, matFrame, -0.90, -0.10, 0));
+
+// Back strap checkering / texture
+for (let i = 0; i < 16; i++) {
+  gripSafetyGroup.add(box(0.004, 0.032, 0.49, matBlack, -0.96, -0.38 + i*0.038, 0));
+}
+// Vertical checkering
+for (let i = 0; i < 8; i++) {
+  gripSafetyGroup.add(box(0.004, 0.50, 0.004, matBlack, -0.96, -0.12, -0.22 + i*0.055));
+}
+
+// ─── THUMB SAFETY ───
+frameGroup.add(box(0.32, 0.048, 0.055, matSafety, -0.78, 0.50, 0.31));
+frameGroup.add(cyl(0.032, 0.032, 0.055, 10, matSafety, -0.62, 0.50, 0.31));
+// Paddle texture
+for (let i = 0; i < 5; i++) {
+  frameGroup.add(box(0.004, 0.052, 0.058, matBlack, -0.86 + i*0.038, 0.50, 0.31));
+}
+// Safety detent
+frameGroup.add(cyl(0.015, 0.015, 0.03, 8, matScrews, -0.78, 0.50, 0.345));
+
+// ─── GRIP PANELS ───
+for (let s = -1; s <= 1; s += 2) {
+  // Panel base
+  frameGroup.add(box(0.44, 0.64, 0.025, matGrip, -0.38, -0.18, s*0.285));
+
+  // Diamond checkering pattern
+  const checkSize = 0.028;
+  for (let row = 0; row < 18; row++) {
+    for (let col = 0; col < 12; col++) {
+      const cx = -0.56 + col * checkSize;
+      const cy = -0.45 + row * checkSize;
+      if (cx > -0.16 && cx < -0.58 && cy > 0.08) continue; // skip out of bounds
+      const diamond = box(0.003, checkSize*0.7, 0.003, matBlack,
+        cx, cy, s * 0.298);
+      diamond.rotation.z = Math.PI / 4;
+      frameGroup.add(diamond);
+    }
+    // Row lines
+    frameGroup.add(box(0.38, 0.003, 0.003, matBlack,
+      -0.38, -0.45 + row * checkSize, s * 0.298));
+  }
+
+  // Grip panel border/outline
+  frameGroup.add(box(0.005, 0.60, 0.003, matDarkSteel, -0.16, -0.18, s*0.295));
+  frameGroup.add(box(0.005, 0.60, 0.003, matDarkSteel, -0.60, -0.18, s*0.295));
+  frameGroup.add(box(0.44, 0.005, 0.003, matDarkSteel, -0.38, 0.12, s*0.295));
+  frameGroup.add(box(0.44, 0.005, 0.003, matDarkSteel, -0.38, -0.48, s*0.295));
+
+  // Grip screws (two per side)
+  const screwPositions = [
+    [-0.26, -0.04, s * 0.30],
+    [-0.50, -0.32, s * 0.30],
+  ];
+  screwPositions.forEach(p => {
+    // Screw body
+    const scr = cyl(0.036, 0.036, 0.018, 16, matScrews, p[0], p[1], p[2], Math.PI/2, 0, 0);
+    frameGroup.add(scr);
+    // Screw slot (cross pattern for torx-style)
+    frameGroup.add(box(0.052, 0.004, 0.006, matBlack, p[0], p[1], p[2]+s*0.002));
+    frameGroup.add(box(0.004, 0.052, 0.006, matBlack, p[0], p[1], p[2]+s*0.002));
+    // Screw rim
+    frameGroup.add(cyl(0.040, 0.040, 0.004, 16, matDarkSteel, p[0], p[1], p[2]+s*0.008, Math.PI/2, 0, 0));
+  });
+}
+
+// ─── MAINSPRING HOUSING (bottom back of grip) ───
+const msh = box(0.11, 0.28, 0.47, matFrame, -0.80, -0.48, 0);
+msh.rotation.z = -0.06;
+frameGroup.add(msh);
+// MSH checkering
+for (let i = 0; i < 6; i++) {
+  frameGroup.add(box(0.004, 0.028, 0.48, matBlack, -0.80, -0.36 - i*0.038, 0));
+}
+// Lanyard loop hint
+frameGroup.add(cyl(0.025, 0.025, 0.04, 8, matFrame, -0.80, -0.62, 0, Math.PI/2, 0, 0));
+
+// ─── MAGAZINE BASEPLATE ───
+frameGroup.add(box(0.62, 0.07, 0.46, matFrame, -0.38, -0.50, 0));
+frameGroup.add(box(0.58, 0.04, 0.42, matBlack, -0.38, -0.55, 0));
+// Magazine seam line
+frameGroup.add(box(0.60, 0.008, 0.44, matAccent, -0.38, -0.47, 0));
+// Magazine catch cutout
+frameGroup.add(box(0.08, 0.08, 0.06, matBlack, 0.08, -0.05, 0.28));
+
+// ─── MAGAZINE RELEASE BUTTON ───
+frameGroup.add(cyl(0.030, 0.030, 0.05, 12, matAccent, 0.08, 0.02, 0.30));
+// Button checkering
+frameGroup.add(box(0.04, 0.004, 0.05, matBlack, 0.08, 0.02, 0.325));
+
+// ─── FRAME PINS ───
+const pinPos = [
+  [0.52, 0.16, 0.28], // trigger pin
+  [-0.28, 0.16, 0.28], // hammer pin  
+  [-0.62, 0.16, 0.28], // sear pin
+  [0.08, 0.36, 0.28],  // slide stop pin
+];
+pinPos.forEach(p => {
+  frameGroup.add(cyl(0.018, 0.018, 0.58, 10, matScrews, p[0], p[1], p[2], Math.PI/2, 0, 0));
+});
+
+// ─── PLUNGER TUBE ───
+frameGroup.add(cyl(0.022, 0.022, 0.28, 10, matSlide, -0.52, 0.50, 0.31, 0, 0, Math.PI/2 - 0.08));
+
+// ─── RECOIL SPRING PLUG (visible at muzzle below barrel) ───
+frameGroup.add(cyl(0.055, 0.055, 0.10, 14, matBarrel, 1.58, 0.42, 0, 0, 0, Math.PI/2));
+frameGroup.add(cyl(0.065, 0.065, 0.02, 14, matSlide, 1.50, 0.42, 0, 0, 0, Math.PI/2));
+
+// ─── SLIDE BOTTOM RAILS (visible between slide and frame) ───
+for (let s = -1; s <= 1; s += 2) {
+  frameGroup.add(box(1.60, 0.015, 0.04, matDarkSteel, 0.08, 0.44, s*0.24));
+}
+
+// ─── FRONT STRAP CHECKERING ───
+for (let i = 0; i < 12; i++) {
+  frameGroup.add(box(0.004, 0.028, 0.53, matBlack, -0.10, -0.38 + i*0.035, 0));
+}
+
+// ─── ADDITIONAL SLIDE DETAILS ───
+// Loaded chamber indicator groove
+slideGroup.add(box(0.15, 0.005, 0.06, matBlack, 0.40, 0.91, 0));
+
+// Position the whole gun
+gunGroup.position.set(0, 0, 0);
+gunGroup.rotation.y = -0.25;
+
+/* ═══════════════════════════════════════════
+   MUZZLE FLASH (multi-layered)
+   ═══════════════════════════════════════════ */
+const flashGroup = new THREE.Group();
+flashGroup.visible = false;
+gunGroup.add(flashGroup);
+
+// Core flash — bright white/yellow
+const fGeo1 = new THREE.ConeGeometry(0.25, 0.6, 6);
+const fMesh1 = new THREE.Mesh(fGeo1, matFlashCore.clone());
+fMesh1.rotation.z = -Math.PI/2;
+fMesh1.position.set(2.05, 0.66, 0);
+flashGroup.add(fMesh1);
+
+// Outer flash — orange
+const fGeo2 = new THREE.ConeGeometry(0.40, 0.9, 8);
+const fMesh2 = new THREE.Mesh(fGeo2, matFlashOuter.clone());
+fMesh2.rotation.z = -Math.PI/2;
+fMesh2.position.set(2.15, 0.66, 0);
+flashGroup.add(fMesh2);
+
+// Star flash
+const fGeo3 = new THREE.ConeGeometry(0.18, 0.7, 4);
+const fMesh3 = new THREE.Mesh(fGeo3, matFlashOuter.clone());
+fMesh3.rotation.set(Math.PI/4, 0, -Math.PI/2);
+fMesh3.position.set(2.08, 0.66, 0);
+flashGroup.add(fMesh3);
+
+// Radial spikes
+for (let i = 0; i < 5; i++) {
+  const spike = new THREE.Mesh(
+    new THREE.ConeGeometry(0.03, 0.5 + Math.random()*0.3, 4),
+    matFlashCore.clone()
+  );
+  spike.rotation.z = -Math.PI/2;
+  spike.rotation.x = (Math.PI*2/5) * i;
+  spike.position.set(1.95, 0.66, 0);
+  flashGroup.add(spike);
+}
+
+// Flash dynamic point light
+const flashLight = new THREE.PointLight(0xffbb55, 0, 10);
+flashLight.position.set(2.0, 0.66, 0);
+gunGroup.add(flashLight);
+
+/* ═══════════════════════════════════════════
+   EJECTED CASING
+   ═══════════════════════════════════════════ */
+const casingGroup = new THREE.Group();
+casingGroup.visible = false;
+scene.add(casingGroup);
+casingGroup.add(cyl(0.038, 0.038, 0.17, 10, matCasing, 0, 0, 0, 0, 0, Math.PI/2));
+casingGroup.add(cyl(0.046, 0.046, 0.018, 10, matCasing, -0.085, 0, 0, 0, 0, Math.PI/2));
+// Primer circle
+casingGroup.add(cyl(0.018, 0.018, 0.005, 8,
+  new THREE.MeshStandardMaterial({ color: 0x887755, roughness: 0.5, metalness: 0.8 }),
+  -0.093, 0, 0, 0, 0, Math.PI/2));
+
+/* ═══════════════════════════════════════════
+   COLD VAPOR / FROST PARTICLES
+   ═══════════════════════════════════════════ */
+const VAPOR_COUNT = 400;
+const vapGeo = new THREE.BufferGeometry();
+const vapPos = new Float32Array(VAPOR_COUNT * 3);
+const vapSizes = new Float32Array(VAPOR_COUNT);
+const vapSpeeds = [];
+
+for (let i = 0; i < VAPOR_COUNT; i++) {
+  vapPos[i*3]   = (Math.random()-0.5) * 6;
+  vapPos[i*3+1] = (Math.random()-0.5) * 3.5 - 0.3;
+  vapPos[i*3+2] = (Math.random()-0.5) * 6;
+  vapSizes[i] = Math.random() * 14 + 2;
+  vapSpeeds.push({
+    x: (Math.random()-0.5) * 0.004,
+    y: (Math.random()-0.3) * 0.0025,
+    z: (Math.random()-0.5) * 0.004,
+    phase: Math.random() * Math.PI * 2,
+  });
+}
+vapGeo.setAttribute('position', new THREE.BufferAttribute(vapPos, 3));
+vapGeo.setAttribute('size', new THREE.BufferAttribute(vapSizes, 1));
+
+const vapMat = new THREE.ShaderMaterial({
+  transparent: true, depthWrite: false,
+  blending: THREE.AdditiveBlending,
+  uniforms: {
+    uTime: { value: 0 },
+    uColor1: { value: new THREE.Color(0x3a6898) },
+    uColor2: { value: new THREE.Color(0x284870) },
+  },
+  vertexShader: `
+    attribute float size;
+    uniform float uTime;
+    varying float vAlpha;
+    varying float vMix;
+    void main() {
+      vec4 mv = modelViewMatrix * vec4(position, 1.0);
+      gl_PointSize = size * (220.0 / -mv.z);
+      gl_Position = projectionMatrix * mv;
+      float dist = length(position.xz);
+      vAlpha = (0.06 + 0.05 * sin(uTime * 0.4 + position.x * 2.0 + position.z))
+             * smoothstep(5.0, 1.0, dist);
+      vMix = 0.5 + 0.5 * sin(position.y * 3.0 + uTime * 0.3);
+    }
+  `,
+  fragmentShader: `
+    uniform vec3 uColor1;
+    uniform vec3 uColor2;
+    varying float vAlpha;
+    varying float vMix;
+    void main() {
+      float d = length(gl_PointCoord - 0.5);
+      if (d > 0.5) discard;
+      float a = vAlpha * smoothstep(0.5, 0.05, d);
+      vec3 col = mix(uColor1, uColor2, vMix);
+      gl_FragColor = vec4(col, a);
+    }
+  `,
+});
+const vaporPoints = new THREE.Points(vapGeo, vapMat);
+scene.add(vaporPoints);
+
+// === Frost sparkle particles (tiny bright dots near gun) ===
+const FROST_COUNT = 120;
+const frostGeo = new THREE.BufferGeometry();
+const frostPos = new Float32Array(FROST_COUNT * 3);
+const frostSizes = new Float32Array(FROST_COUNT);
+for (let i = 0; i < FROST_COUNT; i++) {
+  frostPos[i*3]   = (Math.random()-0.5) * 3.5;
+  frostPos[i*3+1] = (Math.random()-0.5) * 1.8 + 0.3;
+  frostPos[i*3+2] = (Math.random()-0.5) * 2.0;
+  frostSizes[i] = Math.random() * 3 + 0.5;
+}
+frostGeo.setAttribute('position', new THREE.BufferAttribute(frostPos, 3));
+frostGeo.setAttribute('size', new THREE.BufferAttribute(frostSizes, 1));
+
+const frostMat = new THREE.ShaderMaterial({
+  transparent: true, depthWrite: false,
+  blending: THREE.AdditiveBlending,
+  uniforms: { uTime: { value: 0 } },
+  vertexShader: `
+    attribute float size;
+    uniform float uTime;
+    varying float vAlpha;
+    void main() {
+      vec4 mv = modelViewMatrix * vec4(position, 1.0);
+      gl_PointSize = size * (150.0 / -mv.z);
+      gl_Position = projectionMatrix * mv;
+      vAlpha = 0.3 * (0.5 + 0.5 * sin(uTime * 1.5 + position.x * 5.0 + position.z * 7.0));
+    }
+  `,
+  fragmentShader: `
+    varying float vAlpha;
+    void main() {
+      float d = length(gl_PointCoord - 0.5);
+      if (d > 0.5) discard;
+      float a = vAlpha * smoothstep(0.5, 0.0, d);
+      gl_FragColor = vec4(0.7, 0.85, 1.0, a);
+    }
+  `,
+});
+scene.add(new THREE.Points(frostGeo, frostMat));
+
+/* ═══════════════════════════════════════════
+   SMOKE PUFF SYSTEM (for firing)
+   ═══════════════════════════════════════════ */
+const SMOKE_POOL = 80;
+const smokePool = [];
+function mkSmoke() {
+  const m = new THREE.Mesh(
+    new THREE.IcosahedronGeometry(0.06 + Math.random()*0.06, 1),
+    new THREE.MeshBasicMaterial({ color: 0x8098aa, transparent: true, opacity: 0, depthWrite: false })
+  );
+  m.visible = false;
+  scene.add(m);
+  return { mesh: m, vel: new THREE.Vector3(), life: 0, max: 0, on: false };
+}
+for (let i = 0; i < SMOKE_POOL; i++) smokePool.push(mkSmoke());
+
+function emitSmoke(origin, n = 18) {
+  let c = 0;
+  for (const p of smokePool) {
+    if (!p.on && c < n) {
+      p.on = true; p.life = 0; p.max = 0.7 + Math.random()*0.9;
+      p.mesh.visible = true;
+      p.mesh.position.copy(origin);
+      p.mesh.scale.setScalar(0.4 + Math.random()*0.5);
+      p.vel.set(
+        (Math.random()-0.4)*1.8 + 0.6,
+        (Math.random()-0.1)*0.9,
+        (Math.random()-0.5)*1.2
+      );
+      c++;
+    }
+  }
+}
+
+// === Hot gas wisps (post-fire, from ejection port) ===
+function emitPortSmoke() {
+  const origin = new THREE.Vector3(-0.10, 0.90, 0.15);
+  gunGroup.localToWorld(origin);
+  let c = 0;
+  for (const p of smokePool) {
+    if (!p.on && c < 6) {
+      p.on = true; p.life = 0; p.max = 1.0 + Math.random()*0.5;
+      p.mesh.visible = true;
+      p.mesh.position.copy(origin);
+      p.mesh.scale.setScalar(0.2 + Math.random()*0.3);
+      p.vel.set(
+        (Math.random()-0.5)*0.3,
+        0.5 + Math.random()*0.5,
+        (Math.random()-0.5)*0.3
+      );
+      c++;
+    }
+  }
+}
+
+/* ═══════════════════════════════════════════
+   ANIMATION STATE
+   ═══════════════════════════════════════════ */
+let isFiring = false, fireTime = 0;
+const FIRE_DUR = 0.85;
+const camDefault = new THREE.Vector3(4.5, 2.8, 5.5);
+const tgtDefault = new THREE.Vector3(0, 0.15, 0);
+let casingOn = false, casingT = 0;
+const casingOrigin = new THREE.Vector3();
+
+/* ═══════════════════════════════════════════
+   EASING
+   ═══════════════════════════════════════════ */
+const easeOut = t => t*(2-t);
+const easeInOut = t => t<0.5 ? 2*t*t : -1+(4-2*t)*t;
+const easeOutCubic = t => 1-Math.pow(1-t,3);
+const easeOutBack = t => { const c = 1.70158; return 1+(c+1)*Math.pow(t-1,3)+c*Math.pow(t-1,2); };
+
+/* ═══════════════════════════════════════════
+   FIRE SEQUENCE
+   ═══════════════════════════════════════════ */
+function startFire() {
+  if (isFiring) return;
+  isFiring = true; fireTime = 0;
+
+  // Muzzle smoke
+  const muzzle = new THREE.Vector3(1.80, 0.66, 0);
+  gunGroup.localToWorld(muzzle);
+  emitSmoke(muzzle, 18);
+
+  // Port smoke (delayed effect)
+  setTimeout(emitPortSmoke, 120);
+
+  // Casing
+  casingOn = true; casingT = 0;
+  const ej = new THREE.Vector3(-0.10, 0.95, 0.18);
+  gunGroup.localToWorld(ej);
+  casingOrigin.copy(ej);
+  casingGroup.position.copy(ej);
+  casingGroup.visible = true;
+  casingGroup.rotation.set(0, 0, 0);
+
+  // Screen flash
+  const fl = document.getElementById('flash-overlay');
+  fl.style.opacity = '1';
+  setTimeout(() => fl.style.opacity = '0', 70);
+
+  // Bloom kick
+  bloomPass.strength = 0.8;
+  setTimeout(() => { bloomPass.strength = 0.4; }, 150);
+}
+
+function updateFire(dt) {
+  if (!isFiring) return;
+  fireTime += dt;
+  const t = fireTime / FIRE_DUR;
+
+  if (t >= 1) {
+    isFiring = false;
+    slideGroup.position.x = 0;
+    triggerGroup.rotation.z = 0;
+    hammerGroup.rotation.z = -0.55;
+    flashGroup.visible = false;
+    flashLight.intensity = 0;
+    gunGroup.rotation.z = 0;
+    gunGroup.position.x = 0;
+    return;
+  }
+
+  // Trigger pull
+  if (t < 0.08) {
+    triggerGroup.rotation.z = -0.14 * easeOut(t / 0.08);
+  } else if (t < 0.5) {
+    triggerGroup.rotation.z = -0.14 * (1 - easeInOut((t-0.08)/0.42));
+  } else {
+    triggerGroup.rotation.z = 0;
+  }
+
+  // Hammer snap forward
+  if (t < 0.06) {
+    hammerGroup.rotation.z = -0.55;
+  } else if (t < 0.12) {
+    hammerGroup.rotation.z = -0.55 + 0.55 * easeOutCubic((t-0.06)/0.06);
+  } else if (t < 0.45) {
+    hammerGroup.rotation.z = 0;
+  } else {
+    // Re-cock (slide pushes hammer back)
+    hammerGroup.rotation.z = -0.55 * easeInOut(Math.min(1, (t-0.45)/0.35));
+  }
+
+  // Muzzle flash
+  if (t >= 0.07 && t < 0.22) {
+    flashGroup.visible = true;
+    const ft = (t-0.07) / 0.15;
+    const fo = ft < 0.2 ? ft/0.2 : Math.max(0, 1-(ft-0.2)/0.8);
+    flashGroup.children.forEach(c => { if(c.material) c.material.opacity = fo * 0.85; });
+    flashGroup.rotation.x += dt * 18;
+    flashGroup.scale.setScalar(0.7 + fo * 0.6);
+    flashLight.intensity = fo * 100;
+  } else {
+    flashGroup.visible = false;
+    flashLight.intensity *= 0.85;
+  }
+
+  // Slide reciprocation
+  if (t >= 0.07 && t < 0.22) {
+    slideGroup.position.x = -0.50 * easeOutCubic((t-0.07)/0.15);
+  } else if (t >= 0.22 && t < 0.52) {
+    slideGroup.position.x = -0.50 * (1 - easeOutBack((t-0.22)/0.30));
+  } else if (t >= 0.52) {
+    slideGroup.position.x = 0;
+  }
+
+  // Whole gun recoil
+  if (t < 0.12) {
+    const r = easeOut(t / 0.12);
+    gunGroup.rotation.z = -0.045 * r;
+    gunGroup.position.x = -0.10 * r;
+    gunGroup.position.y = 0.03 * r;
+  } else if (t < 0.55) {
+    const r = 1 - easeInOut((t-0.12)/0.43);
+    gunGroup.rotation.z = -0.045 * r;
+    gunGroup.position.x = -0.10 * r;
+    gunGroup.position.y = 0.03 * r;
+  } else {
+    gunGroup.rotation.z = 0;
+    gunGroup.position.x = 0;
+    gunGroup.position.y = 0;
+  }
+}
+
+/* ═══════════════════════════════════════════
+   CASING PHYSICS
+   ═══════════════════════════════════════════ */
+function updateCasing(dt) {
+  if (!casingOn) return;
+  casingT += dt;
+  if (casingT > 1.3) { casingOn = false; casingGroup.visible = false; return; }
+  const ct = casingT;
+  casingGroup.position.x = casingOrigin.x + ct * 1.2;
+  casingGroup.position.y = casingOrigin.y + ct * 3.0 - 5.5 * ct * ct;
+  casingGroup.position.z = casingOrigin.z + ct * 1.5;
+  casingGroup.rotation.x += dt * 14;
+  casingGroup.rotation.z += dt * 10;
+  casingGroup.rotation.y += dt * 6;
+}
+
+/* ═══════════════════════════════════════════
+   VAPOR UPDATE
+   ═══════════════════════════════════════════ */
+function updateVapor(time) {
+  vapMat.uniforms.uTime.value = time;
+  frostMat.uniforms.uTime.value = time;
+  const pos = vapGeo.attributes.position.array;
+  for (let i = 0; i < VAPOR_COUNT; i++) {
+    const sp = vapSpeeds[i];
+    pos[i*3]   += sp.x + Math.sin(time*0.25 + sp.phase)*0.0008;
+    pos[i*3+1] += sp.y + Math.sin(time*0.15 + sp.phase*2)*0.0005;
+    pos[i*3+2] += sp.z + Math.cos(time*0.2 + sp.phase)*0.0008;
+    // Wrap
+    if(pos[i*3]>5) pos[i*3]=-5; if(pos[i*3]<-5) pos[i*3]=5;
+    if(pos[i*3+1]>2.5) pos[i*3+1]=-2; if(pos[i*3+1]<-2) pos[i*3+1]=2.5;
+    if(pos[i*3+2]>5) pos[i*3+2]=-5; if(pos[i*3+2]<-5) pos[i*3+2]=5;
+  }
+  vapGeo.attributes.position.needsUpdate = true;
+}
+
+/* ═══════════════════════════════════════════
+   SMOKE UPDATE
+   ═══════════════════════════════════════════ */
+function updateSmoke(dt) {
+  for (const p of smokePool) {
+    if (!p.on) continue;
+    p.life += dt;
+    const lt = p.life / p.max;
+    if (lt >= 1) { p.on = false; p.mesh.visible = false; continue; }
+    p.mesh.position.addScaledVector(p.vel, dt);
+    p.vel.multiplyScalar(0.955);
+    p.vel.y += dt * 0.35;
+    p.mesh.scale.setScalar((0.5 + lt * 2.5) * (1 - lt * 0.3));
+    p.mesh.material.opacity = (1 - lt*lt) * 0.30;
+    // Slight color fade
+    const grey = 0.5 + lt * 0.3;
+    p.mesh.material.color.setRGB(grey, grey + 0.02, grey + 0.05);
+  }
+}
+
+/* ═══════════════════════════════════════════
+   MAIN ANIMATION LOOP
+   ═══════════════════════════════════════════ */
+const clock = new THREE.Clock();
+
+function animate() {
+  requestAnimationFrame(animate);
+  const dt = Math.min(clock.getDelta(), 0.05);
+  const time = clock.getElapsedTime();
+
+  controls.update();
+  updateVapor(time);
+  updateSmoke(dt);
+  updateFire(dt);
+  updateCasing(dt);
+
+  // Idle hover / breathing
+  if (!isFiring) {
+    gunGroup.position.y = Math.sin(time * 0.7) * 0.018;
+    gunGroup.rotation.x = Math.sin(time * 0.5) * 0.003;
+  }
+
+  // Subtle light animation
+  rimLight.intensity = 60 + Math.sin(time * 0.8) * 8;
+  fillLight.intensity = 32 + Math.sin(time * 0.6 + 1) * 5;
+
+  composer.render();
+}
+
+/* ═══════════════════════════════════════════
+   EVENTS
+   ═══════════════════════════════════════════ */
+document.getElementById('btn-fire').addEventListener('click', startFire);
+
+document.getElementById('btn-reset').addEventListener('click', () => {
+  camera.position.copy(camDefault);
+  controls.target.copy(tgtDefault);
+  controls.update();
+});
+
+document.addEventListener('keydown', e => {
+  if (e.code === 'Space') { e.preventDefault(); startFire(); }
+  if (e.code === 'KeyR') {
+    camera.position.copy(camDefault);
+    controls.target.copy(tgtDefault);
+    controls.update();
+  }
+});
+
+window.addEventListener('resize', () => {
+  camera.aspect = window.innerWidth / window.innerHeight;
+  camera.updateProjectionMatrix();
+  renderer.setSize(window.innerWidth, window.innerHeight);
+  composer.setSize(window.innerWidth, window.innerHeight);
+});
+
+// Disable context menu on canvas
+renderer.domElement.addEventListener('contextmenu', e => e.preventDefault());
+
+// Loading screen dismiss
+setTimeout(() => {
+  document.getElementById('loading').classList.add('hidden');
+  setTimeout(() => document.getElementById('loading').style.display = 'none', 1000);
+}, 2500);
+
+// Start
+animate();
+console.log('%c Cold Steel 1911 — 3D Art Showcase ', 'background:#1a2838;color:#7aadd4;padding:8px;border-radius:4px;font-size:12px');
+
+</script>
+</body>
+</html>

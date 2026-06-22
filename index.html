@@ -46,6 +46,10 @@
     display:grid;grid-template-columns:minmax(300px, 38vw) minmax(360px, 1fr);
     gap:30px;align-items:center;padding:34px 44px 34px 56px;}
   .titleCard{grid-column:1;width:min(560px,100%);padding:0;}
+  .logoWrap{display:block;width:min(430px,100%);margin-bottom:8px;}
+  .gameLogo{display:block;width:100%;height:auto;max-height:210px;object-fit:contain;
+    filter:drop-shadow(0 0 24px rgba(193,18,31,.44)) drop-shadow(4px 5px 0 rgba(0,0,0,.72));}
+  .titleCard.logoActive .menuKicker,.titleCard.logoActive .title{display:none;}
   .menuKicker{font-size:11px;letter-spacing:.36em;text-transform:uppercase;color:#cfc7a8;margin-bottom:8px;}
   .title{font-family:Impact,"Arial Narrow Bold",sans-serif;
     font-size:clamp(58px, 7vw, 112px);letter-spacing:.06em;color:var(--blood);
@@ -99,7 +103,8 @@
   .tutorialPanel{padding-top:13px;padding-bottom:13px;}
   .tutorialPanel .panelHead{margin-bottom:10px;}
   .tutorialPanel .panelHead h2{font-size:20px;}
-  .menuActions{grid-column:1;width:min(560px,100%);display:none;align-items:flex-start;justify-content:flex-start;gap:10px;flex-wrap:wrap;}
+  .menuActions{grid-column:2;grid-row:2 / span 2;width:min(560px,100%);display:none;
+    align-self:center;align-items:flex-start;justify-content:flex-start;gap:10px;flex-wrap:wrap;}
   .btn.ghost{font-size:17px;padding:8px 20px;background:none;border:1px solid #3a4232;color:#9aa08c;box-shadow:none}
   .btn.ghost:hover{border-color:#7a8450;color:#e8e3d3;background:#11170f}
   .devrow{display:flex;justify-content:center;gap:10px;margin-top:12px;flex-wrap:wrap}
@@ -143,6 +148,7 @@
   .settingToggle input{width:20px;height:20px;accent-color:#c1121f}
   #start .btn{background:none;border:0;box-shadow:none;padding:6px 0;color:#e8e3d3;text-align:left;
     transition:color .18s ease,text-shadow .18s ease;}
+  #start #playBtn{font-size:clamp(34px,3.5vw,50px);padding:16px 0;}
   #start .btn:hover{background:none;color:#ff2435;text-shadow:0 0 16px rgba(193,18,31,.65);}
   #start .btn.ghost{background:none;border:0;color:#9aa08c;}
   #start .btn.ghost:hover{background:none;color:#e8e3d3;}
@@ -156,10 +162,13 @@
   #finalStats{margin:18px 0 30px;font-size:18px;line-height:1.9;color:var(--rot);}
   @media (max-width:920px){
     .menuShell{grid-template-columns:1fr;gap:24px;padding:28px 24px;}
+    .menuActions{grid-column:1;grid-row:auto;}
   }
   @media (max-width:720px){
     .overlay{justify-content:flex-start;padding-top:18px;}
     .titleCard{padding:0;}
+    .logoWrap{width:min(360px,100%);}
+    .gameLogo{max-height:145px;}
     .title{font-size:50px;}
     .subtitle{font-size:12px;letter-spacing:.28em;}
     .menuHome{grid-template-columns:1fr;}
@@ -233,10 +242,14 @@
 <!-- START SCREEN -->
 <div id="start" class="overlay">
   <div class="menuShell">
-    <div class="titleCard">
+    <div class="titleCard logoActive">
+      <picture class="logoWrap">
+        <source media="(max-width:720px)" srcset="images/sidebysidelogo.png">
+        <img class="gameLogo" id="gameLogo" src="images/topbottomlogo.png" alt="Dead Game">
+      </picture>
       <div class="menuKicker">fog breach 03</div>
       <div class="title">DEAD GAME</div>
-      <div class="subtitle">they come with the fog</div>
+      <div class="subtitle"></div>
     </div>
 
     <div class="menuHome" id="mainMenu">
@@ -386,6 +399,7 @@
 <div id="damage"></div>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script src="gunshtml/weapon-model-catalog.js"></script>
 <script src="https://unpkg.com/peerjs@1.5.5/dist/peerjs.min.js"></script>
 <script>
 (function(){
@@ -421,7 +435,7 @@ const WEAPON_DEFS = {
     id:'pistol', slot:'1', name:'FIELD PISTOL', short:'PISTOL', auto:false,
     magSize:MAG_SIZE, damage:BODY_DAMAGE, fireInterval:FIRE_INTERVAL, reloadTime:RELOAD_TIME,
     pellets:1, spread:0.004, recoilPitch:0.015, recoilZ:-0.38, restZ:-0.45,
-    muzzleY:0.045, muzzleZ:-0.58, flashScale:1,
+    muzzleY:0.032, muzzleZ:-0.56, flashScale:1,
     upgradedDamage:42, upgradedMagSize:12, upgradedFireInterval:0.24,
   },
   smg: {
@@ -707,8 +721,12 @@ function showMenuPart(el, show, display){
   if(el) el.style.display = show ? (display || '') : 'none';
 }
 function setMenuTitle(text){
-  const title = ui.start && ui.start.querySelector('.title');
+  const titleCard = ui.start && ui.start.querySelector('.titleCard');
+  const title = titleCard && titleCard.querySelector('.title');
+  const logo = titleCard && titleCard.querySelector('.gameLogo');
   if(title) title.textContent = text;
+  if(logo) logo.alt = text === 'DEAD GAME' ? 'Dead Game' : text;
+  if(titleCard) titleCard.classList.toggle('logoActive', text === 'DEAD GAME');
 }
 function setMenuView(view){
   menuView = view;
@@ -839,6 +857,7 @@ function initEngine(){
   camera.add(flashlight.target);
 
   buildGun();
+  registerForgeWeaponCatalog();
   clock = new THREE.Clock();
 }
 
@@ -1137,7 +1156,201 @@ function buildGun(){
   weaponModels = {};
   const B   = (w,h,d,m) => new THREE.Mesh(new THREE.BoxGeometry(w,h,d), m);
   const cyl = (r,l,m)   => new THREE.Mesh(new THREE.CylinderGeometry(r,r,l,12), m);
-  const pistolModel = new THREE.Group();
+
+  function makePistolModel(){
+    const model = new THREE.Group();
+    const root = new THREE.Group();
+    root.scale.setScalar(0.17);
+    root.rotation.y = Math.PI / 2;
+    root.position.set(0, -0.08, -0.25);
+    model.add(root);
+
+    const box = (w,h,d,m,px=0,py=0,pz=0,rx=0,ry=0,rz=0) => {
+      const mesh = new THREE.Mesh(new THREE.BoxGeometry(w,h,d), m);
+      mesh.position.set(px,py,pz);
+      if(rx || ry || rz) mesh.rotation.set(rx,ry,rz);
+      return mesh;
+    };
+    const C = (rt,rb,h,seg,m,px=0,py=0,pz=0,rx=0,ry=0,rz=0) => {
+      const mesh = new THREE.Mesh(new THREE.CylinderGeometry(rt,rb,h,seg || 12), m);
+      mesh.position.set(px,py,pz);
+      if(rx || ry || rz) mesh.rotation.set(rx,ry,rz);
+      return mesh;
+    };
+    const S = (r,ws,hs,m,px=0,py=0,pz=0) => {
+      const mesh = new THREE.Mesh(new THREE.SphereGeometry(r,ws,hs), m);
+      mesh.position.set(px,py,pz);
+      return mesh;
+    };
+
+    const matSlide = new THREE.MeshPhongMaterial({color:0x384452, shininess:95, specular:0x8490a0});
+    const matFrame = new THREE.MeshPhongMaterial({color:0x2c3642, shininess:80, specular:0x6f7c88});
+    const matBarrel = new THREE.MeshPhongMaterial({color:0x505b68, shininess:105, specular:0xa8b3bc});
+    const matTrigger = new THREE.MeshPhongMaterial({color:0x586574, shininess:90, specular:0x9aa6b2});
+    const matHammer = new THREE.MeshPhongMaterial({color:0x3f4a55, shininess:85, specular:0x7d8790});
+    const matSafety = new THREE.MeshPhongMaterial({color:0x4d5c6c, shininess:80, specular:0x8795a3});
+    const matAccent = new THREE.MeshPhongMaterial({color:0x647586, shininess:70, specular:0x9aa6b2});
+    const matScrews = new THREE.MeshPhongMaterial({color:0x728292, shininess:110, specular:0xc3ccd4});
+    const matBlack = new THREE.MeshPhongMaterial({color:0x0d1117, shininess:28, specular:0x303640});
+    const matDarkSteel = new THREE.MeshPhongMaterial({color:0x1a2028, shininess:55, specular:0x4a5360});
+    const matGrip = new THREE.MeshLambertMaterial({color:0x141820});
+    const dotMat = new THREE.MeshBasicMaterial({color:0x99ddff});
+    gunMetalMats.push(matSlide, matFrame, matBarrel, matTrigger, matHammer, matSafety, matAccent, matScrews, matDarkSteel);
+
+    const slideGroup = new THREE.Group();
+    const frameGroup = new THREE.Group();
+    const gripSafetyGroup = new THREE.Group();
+    const hammerGroup = new THREE.Group();
+    root.add(frameGroup, gripSafetyGroup, hammerGroup, slideGroup);
+
+    slideGroup.add(box(2.55, 0.44, 0.58, matSlide, 0.05, 0.66, 0));
+    slideGroup.add(box(0.28, 0.40, 0.56, matSlide, 1.42, 0.66, 0));
+    slideGroup.add(box(2.70, 0.03, 0.44, matSlide, 0.08, 0.89, 0));
+    slideGroup.add(box(2.40, 0.04, 0.52, matDarkSteel, 0.05, 0.43, 0));
+    for(let i=0;i<14;i++) slideGroup.add(box(0.012, 0.38, 0.60, matBlack, -0.88 - i*0.032, 0.66, 0));
+    for(let i=0;i<8;i++) slideGroup.add(box(0.010, 0.34, 0.58, matBlack, 1.10 + i*0.030, 0.66, 0));
+    for(const s of [-1,1]){
+      slideGroup.add(box(2.2, 0.015, 0.004, matDarkSteel, 0.05, 0.76, s*0.29));
+      slideGroup.add(box(2.2, 0.015, 0.004, matDarkSteel, 0.05, 0.56, s*0.29));
+      const bevel = box(2.7, 0.015, 0.015, matSlide, 0.08, 0.875, s*0.225);
+      bevel.rotation.x = Math.PI / 4;
+      slideGroup.add(bevel);
+    }
+    slideGroup.add(box(0.8, 0.008, 0.06, matBlack, -0.2, 0.905, 0));
+    slideGroup.add(box(0.38, 0.05, 0.32, matBlack, -0.10, 0.885, 0.08));
+    slideGroup.add(box(0.32, 0.07, 0.26, matBlack, -0.10, 0.875, 0.12));
+    slideGroup.add(box(0.40, 0.03, 0.04, matAccent, -0.10, 0.88, 0.28));
+    slideGroup.add(C(0.19, 0.20, 0.14, 28, matBarrel, 1.60, 0.66, 0, 0, 0, Math.PI/2));
+    slideGroup.add(C(0.21, 0.21, 0.018, 28, matSlide, 1.54, 0.66, 0, 0, 0, Math.PI/2));
+    slideGroup.add(C(0.145, 0.145, 0.22, 28, matBarrel, 1.67, 0.66, 0, 0, 0, Math.PI/2));
+    slideGroup.add(C(0.135, 0.145, 0.04, 28, matBarrel, 1.79, 0.66, 0, 0, 0, Math.PI/2));
+    slideGroup.add(C(0.085, 0.085, 0.26, 22, matBlack, 1.72, 0.66, 0, 0, 0, Math.PI/2));
+    slideGroup.add(C(0.09, 0.09, 0.008, 22, matDarkSteel, 1.78, 0.66, 0, 0, 0, Math.PI/2));
+    slideGroup.add(box(0.08, 0.04, 0.16, matBlack, 1.22, 0.91, 0));
+    slideGroup.add(box(0.04, 0.09, 0.08, matBlack, 1.22, 0.96, 0));
+    slideGroup.add(S(0.015, 8, 8, dotMat, 1.22, 1.01, 0));
+    slideGroup.add(box(0.14, 0.12, 0.34, matBlack, -0.82, 0.95, 0));
+    slideGroup.add(box(0.16, 0.05, 0.12, matSlide, -0.82, 1.02, 0));
+    for(let i=0;i<5;i++) slideGroup.add(box(0.003, 0.10, 0.35, matDarkSteel, -0.82 + (i-2)*0.022, 0.95, 0));
+    slideGroup.add(S(0.013, 8, 8, dotMat, -0.82, 0.97, -0.12));
+    slideGroup.add(S(0.013, 8, 8, dotMat, -0.82, 0.97, 0.12));
+    slideGroup.add(box(0.04, 0.38, 0.48, matDarkSteel, -1.34, 0.66, 0));
+    slideGroup.add(box(0.02, 0.32, 0.42, matFrame, -1.36, 0.66, 0));
+
+    frameGroup.add(box(1.85, 0.36, 0.54, matFrame, 0.02, 0.24, 0));
+    frameGroup.add(box(0.75, 0.20, 0.52, matFrame, 0.95, 0.34, 0));
+    frameGroup.add(box(1.70, 0.035, 0.56, matFrame, 0.08, 0.43, 0));
+    frameGroup.add(box(1.50, 0.025, 0.53, matFrame, -0.05, 0.06, 0));
+    frameGroup.add(C(0.042, 0.042, 0.06, 14, matAccent, 0.32, 0.50, 0.31));
+    frameGroup.add(box(0.28, 0.04, 0.025, matAccent, 0.32, 0.48, 0.33));
+    frameGroup.add(C(0.035, 0.035, 0.015, 10, matBlack, 0.46, 0.48, 0.33));
+
+    const triggerGuard = new THREE.Group();
+    frameGroup.add(triggerGuard);
+    triggerGuard.add(box(0.055, 0.52, 0.50, matFrame, 0.58, -0.06, 0));
+    triggerGuard.add(box(0.58, 0.055, 0.50, matFrame, 0.30, -0.30, 0));
+    triggerGuard.add(box(0.055, 0.34, 0.50, matFrame, 0.04, -0.08, 0));
+    triggerGuard.add(C(0.04, 0.04, 0.48, 12, matFrame, 0.55, -0.26, 0, Math.PI/2, 0, 0));
+    triggerGuard.add(C(0.04, 0.04, 0.48, 12, matFrame, 0.07, -0.24, 0, Math.PI/2, 0, 0));
+    for(let i=0;i<8;i++) triggerGuard.add(box(0.057, 0.008, 0.51, matBlack, 0.58, 0.02 - i*0.035, 0));
+
+    const triggerGroup = new THREE.Group();
+    triggerGroup.position.set(0.28, 0.02, 0);
+    frameGroup.add(triggerGroup);
+    triggerGroup.add(box(0.035, 0.30, 0.10, matTrigger, 0, -0.05, 0));
+    triggerGroup.add(box(0.018, 0.12, 0.12, matTrigger, 0.028, -0.10, 0));
+    triggerGroup.add(C(0.012, 0.012, 0.04, 8, matScrews, 0.028, -0.04, 0, Math.PI/2, 0, 0));
+    for(let i=0;i<6;i++) triggerGroup.add(box(0.002, 0.012, 0.13, matBlack, 0.038, -0.06 - i*0.018, 0));
+    triggerGroup.add(box(0.025, 0.06, 0.04, matTrigger, -0.01, 0.12, 0));
+    frameGroup.add(C(0.018, 0.018, 0.58, 12, matScrews, 0.28, 0.10, 0, Math.PI/2, 0, 0));
+
+    hammerGroup.position.set(-1.02, 0.74, 0);
+    hammerGroup.add(C(0.075, 0.065, 0.22, 14, matHammer));
+    hammerGroup.add(box(0.075, 0.28, 0.18, matHammer, 0, 0.16, 0));
+    hammerGroup.add(box(0.06, 0.06, 0.20, matHammer, 0, 0.32, 0));
+    for(let i=0;i<8;i++) hammerGroup.add(box(0.08, 0.006, 0.19, matBlack, 0, 0.20 + i*0.018, 0));
+    hammerGroup.add(box(0.03, 0.12, 0.06, matDarkSteel, 0.02, -0.10, 0));
+    hammerGroup.rotation.z = -0.55;
+
+    gripSafetyGroup.add(box(0.48, 0.14, 0.50, matFrame, -1.08, 0.52, 0));
+    const beavertail = box(0.22, 0.10, 0.46, matFrame, -1.36, 0.58, 0);
+    beavertail.rotation.z = 0.22;
+    gripSafetyGroup.add(beavertail);
+    gripSafetyGroup.add(S(0.06, 10, 8, matFrame, -1.46, 0.60, 0));
+    gripSafetyGroup.add(box(0.10, 0.68, 0.48, matFrame, -0.90, -0.10, 0));
+    for(let i=0;i<16;i++) gripSafetyGroup.add(box(0.004, 0.032, 0.49, matBlack, -0.96, -0.38 + i*0.038, 0));
+    for(let i=0;i<8;i++) gripSafetyGroup.add(box(0.004, 0.50, 0.004, matBlack, -0.96, -0.12, -0.22 + i*0.055));
+
+    frameGroup.add(box(0.32, 0.048, 0.055, matSafety, -0.78, 0.50, 0.31));
+    frameGroup.add(C(0.032, 0.032, 0.055, 10, matSafety, -0.62, 0.50, 0.31));
+    for(let i=0;i<5;i++) frameGroup.add(box(0.004, 0.052, 0.058, matBlack, -0.86 + i*0.038, 0.50, 0.31));
+    frameGroup.add(C(0.015, 0.015, 0.03, 8, matScrews, -0.78, 0.50, 0.345));
+
+    for(const s of [-1,1]){
+      frameGroup.add(box(0.44, 0.64, 0.025, matGrip, -0.38, -0.18, s*0.285));
+      for(let row=0;row<9;row++) frameGroup.add(box(0.38, 0.004, 0.004, matBlack, -0.38, -0.43 + row*0.065, s*0.298));
+      for(let col=0;col<6;col++){
+        const stripe = box(0.004, 0.52, 0.004, matBlack, -0.56 + col*0.075, -0.18, s*0.299);
+        stripe.rotation.z = Math.PI / 4;
+        frameGroup.add(stripe);
+      }
+      frameGroup.add(box(0.005, 0.60, 0.003, matDarkSteel, -0.16, -0.18, s*0.295));
+      frameGroup.add(box(0.005, 0.60, 0.003, matDarkSteel, -0.60, -0.18, s*0.295));
+      frameGroup.add(box(0.44, 0.005, 0.003, matDarkSteel, -0.38, 0.12, s*0.295));
+      frameGroup.add(box(0.44, 0.005, 0.003, matDarkSteel, -0.38, -0.48, s*0.295));
+      for(const p of [[-0.26, -0.04, s*0.30], [-0.50, -0.32, s*0.30]]){
+        frameGroup.add(C(0.036, 0.036, 0.018, 16, matScrews, p[0], p[1], p[2], Math.PI/2, 0, 0));
+        frameGroup.add(box(0.052, 0.004, 0.006, matBlack, p[0], p[1], p[2]+s*0.002));
+        frameGroup.add(box(0.004, 0.052, 0.006, matBlack, p[0], p[1], p[2]+s*0.002));
+      }
+    }
+
+    const mainspring = box(0.11, 0.28, 0.47, matFrame, -0.80, -0.48, 0);
+    mainspring.rotation.z = -0.06;
+    frameGroup.add(mainspring);
+    for(let i=0;i<6;i++) frameGroup.add(box(0.004, 0.028, 0.48, matBlack, -0.80, -0.36 - i*0.038, 0));
+    frameGroup.add(C(0.025, 0.025, 0.04, 8, matFrame, -0.80, -0.62, 0, Math.PI/2, 0, 0));
+
+    const magGroup = new THREE.Group();
+    frameGroup.add(magGroup);
+    magGroup.add(box(0.62, 0.07, 0.46, matFrame, -0.38, -0.50, 0));
+    magGroup.add(box(0.58, 0.04, 0.42, matBlack, -0.38, -0.55, 0));
+    magGroup.add(box(0.60, 0.008, 0.44, matAccent, -0.38, -0.47, 0));
+    frameGroup.add(box(0.08, 0.08, 0.06, matBlack, 0.08, -0.05, 0.28));
+    frameGroup.add(C(0.030, 0.030, 0.05, 12, matAccent, 0.08, 0.02, 0.30));
+    frameGroup.add(box(0.04, 0.004, 0.05, matBlack, 0.08, 0.02, 0.325));
+    for(const p of [[0.52,0.16,0.28],[-0.28,0.16,0.28],[-0.62,0.16,0.28],[0.08,0.36,0.28]]){
+      frameGroup.add(C(0.018, 0.018, 0.58, 10, matScrews, p[0], p[1], p[2], Math.PI/2, 0, 0));
+    }
+    frameGroup.add(C(0.022, 0.022, 0.28, 10, matSlide, -0.52, 0.50, 0.31, 0, 0, Math.PI/2 - 0.08));
+    frameGroup.add(C(0.055, 0.055, 0.10, 14, matBarrel, 1.58, 0.42, 0, 0, 0, Math.PI/2));
+    frameGroup.add(C(0.065, 0.065, 0.02, 14, matSlide, 1.50, 0.42, 0, 0, 0, Math.PI/2));
+    for(const s of [-1,1]) frameGroup.add(box(1.60, 0.015, 0.04, matDarkSteel, 0.08, 0.44, s*0.24));
+    for(let i=0;i<12;i++) frameGroup.add(box(0.004, 0.028, 0.53, matBlack, -0.10, -0.38 + i*0.035, 0));
+    slideGroup.add(box(0.15, 0.005, 0.06, matBlack, 0.40, 0.91, 0));
+
+    for(const side of [-1,1]){
+      const gm = new THREE.MeshBasicMaterial({color:0x101014});
+      const strip = box(1.85, 0.016, 0.006, gm, 0.06, 0.565, side*0.306);
+      slideGroup.add(strip);
+      gunGlowMats.push(gm);
+    }
+
+    model.userData.anim = {
+      root,
+      rootBasePos: root.position.clone(),
+      rootBaseRot: root.rotation.clone(),
+      slide: slideGroup,
+      trigger: triggerGroup,
+      hammer: hammerGroup,
+      mag: magGroup,
+      fireT: 99
+    };
+    return model;
+  }
+
+  const pistolModel = makePistolModel();
+  const legacyPistolModel = new THREE.Group();
   const shotgunModel = new THREE.Group();
 
   // lower receiver, grip, trigger group
@@ -1178,10 +1391,10 @@ function buildGun(){
     const strip = new THREE.Mesh(new THREE.BoxGeometry(0.006, 0.018, 0.30), gm);
     strip.position.set(side*0.0435, 0.062, -0.04);
     gunGlowMats.push(gm);
-    pistolModel.add(strip);
+    legacyPistolModel.add(strip);
   }
 
-  pistolModel.add(receiver, handle, guardBot, guardFrt, trigger, slide, port, serr,
+  legacyPistolModel.add(receiver, handle, guardBot, guardFrt, trigger, slide, port, serr,
           barrel, muzzle, rail, fSight, rSightL, rSightR, mag, magBase);
 
   const sgMetal = new THREE.MeshPhongMaterial({color:0x30343a, shininess:65, specular:0x63686f});
@@ -1455,6 +1668,246 @@ function buildGun(){
 
   gun.position.set(0.22, -0.2, -0.45);
   camera.add(gun);
+
+  if(new URLSearchParams(location.search).get('weaponForgeBridge') === '1' && window.parent !== window){
+    setTimeout(() => {
+      try{
+        const models = {};
+        for(const [id, model] of Object.entries(weaponModels)){
+          const savedUserData = [];
+          model.traverse(object => {
+            savedUserData.push([object, object.userData]);
+            object.userData = {};
+          });
+          const wasVisible = model.visible;
+          model.visible = true;
+          try{
+            models[id] = model.toJSON();
+          }finally{
+            model.visible = wasVisible;
+            for(const [object, userData] of savedUserData) object.userData = userData;
+          }
+        }
+        const definitions = Object.fromEntries(
+          Object.entries(WEAPON_DEFS).map(([id, def]) => [
+            id,
+            {id:def.id, slot:def.slot, name:def.name, short:def.short}
+          ])
+        );
+        window.parent.postMessage({
+          type:'dead-game-weapon-models',
+          models,
+          definitions
+        }, '*');
+      }catch(error){
+        window.parent.postMessage({
+          type:'dead-game-weapon-models',
+          error:error && error.message ? error.message : String(error)
+        }, '*');
+      }
+    }, 0);
+  }
+}
+
+function registerForgeWeaponCatalog(){
+  const files = window.DEAD_GAME_SOURCE_WEAPON_FILES || [];
+  const modelsByFile = window.DEAD_GAME_WEAPON_MODELS_BY_FILE || {};
+  for(const entry of files){
+    const id = entry.catalogId;
+    const project = modelsByFile[entry.filename];
+    if(!id || !project || WEAPON_DEFS[id] || weaponModels[id]) continue;
+    const baseId = entry.weaponId && WEAPON_DEFS[entry.weaponId] ? entry.weaponId : 'rifle';
+    const base = WEAPON_DEFS[baseId] || WEAPON_DEFS.rifle;
+    try{
+      const model = new THREE.ObjectLoader().parse(project);
+      model.visible = false;
+      model.name = entry.name || id;
+      model.traverse(object => {
+        if(!object.isMesh) return;
+        object.castShadow = true;
+        object.receiveShadow = true;
+      });
+
+      const name = String(entry.name || entry.filename.replace(/\.json$/i, '')).toUpperCase();
+      WEAPON_DEFS[id] = {
+        ...base,
+        id,
+        name,
+        short:name.length > 16 ? name.slice(0, 16) : name,
+        cost:base.cost || 750,
+        forgeBaseId:baseId,
+        forgeSourceFile:entry.filename,
+        forgeGameReady:entry.gameReady === true
+      };
+      weaponModels[id] = model;
+      gun.add(model);
+    }catch(error){
+      console.warn('Could not register Forge weapon', entry.filename, error);
+    }
+  }
+}
+
+function forgeWeaponCatalogId(filename){
+  return 'forge_' + String(filename || '').replace(/\.json$/i, '').toLowerCase()
+    .replace(/[^a-z0-9]+/g, '_').replace(/^_+|_+$/g, '');
+}
+
+async function discoverForgeWeaponCatalog(){
+  window.DEAD_GAME_SOURCE_WEAPON_FILES = window.DEAD_GAME_SOURCE_WEAPON_FILES || [];
+  window.DEAD_GAME_WEAPON_MODELS_BY_FILE = window.DEAD_GAME_WEAPON_MODELS_BY_FILE || {};
+  if(location.protocol === 'file:' || typeof fetch !== 'function') return;
+  try{
+    const response = await fetch(`gunshtml/?cacheBust=${Date.now()}`, {cache:'no-store'});
+    if(!response.ok) return;
+    const index = new DOMParser().parseFromString(await response.text(), 'text/html');
+    const known = new Set(window.DEAD_GAME_SOURCE_WEAPON_FILES.map(entry => entry.filename));
+    const filenames = Array.from(index.querySelectorAll('a[href]'))
+      .map(anchor => {
+        try{ return decodeURIComponent(new URL(anchor.getAttribute('href'), response.url).pathname.split('/').pop()); }
+        catch(error){ return ''; }
+      })
+      .filter(filename => /\.json$/i.test(filename));
+
+    for(const filename of new Set(filenames)){
+      if(known.has(filename)) continue;
+      try{
+        const projectResponse = await fetch(`gunshtml/${encodeURIComponent(filename)}?cacheBust=${Date.now()}`, {cache:'no-store'});
+        if(!projectResponse.ok) continue;
+        const project = await projectResponse.json();
+        if(!project || !project.object) continue;
+        const userData = project.object.userData || {};
+        window.DEAD_GAME_WEAPON_MODELS_BY_FILE[filename] = project;
+        window.DEAD_GAME_SOURCE_WEAPON_FILES.push({
+          filename,
+          catalogId:forgeWeaponCatalogId(filename),
+          name:userData.forgeProjectName || filename.replace(/\.json$/i, ''),
+          weaponId:userData.forgeWeaponId && userData.forgeWeaponId !== 'custom' ? userData.forgeWeaponId : null,
+          gameReady:userData.forgeGameReady === true
+        });
+        known.add(filename);
+      }catch(error){
+        console.warn('Could not inspect Forge weapon file', filename, error);
+      }
+    }
+  }catch(error){
+    console.warn('Could not scan gunshtml for Forge weapons', error);
+  }
+}
+
+function pistolModelAnim(){
+  const model = weaponModels && weaponModels.pistol;
+  return model && model.userData ? model.userData.anim : null;
+}
+
+function pistolAnimClamp(t){
+  return Math.max(0, Math.min(1, t));
+}
+
+function pistolEaseOut(t){
+  t = pistolAnimClamp(t);
+  return t * (2 - t);
+}
+
+function pistolEaseInOut(t){
+  t = pistolAnimClamp(t);
+  return t < 0.5 ? 2*t*t : -1 + (4 - 2*t) * t;
+}
+
+function pistolEaseOutCubic(t){
+  t = pistolAnimClamp(t);
+  return 1 - Math.pow(1 - t, 3);
+}
+
+function pistolEaseOutBack(t){
+  t = pistolAnimClamp(t);
+  const c = 1.70158;
+  return 1 + (c + 1) * Math.pow(t - 1, 3) + c * Math.pow(t - 1, 2);
+}
+
+function resetPistolModelAnimation(anim){
+  anim = anim || pistolModelAnim();
+  if(!anim) return;
+  anim.root.position.copy(anim.rootBasePos);
+  anim.root.rotation.copy(anim.rootBaseRot);
+  anim.slide.position.x = 0;
+  anim.trigger.rotation.z = 0;
+  anim.hammer.rotation.z = -0.55;
+  if(anim.mag) anim.mag.position.y = 0;
+}
+
+function triggerPistolModelFire(){
+  const anim = pistolModelAnim();
+  if(anim) anim.fireT = 0;
+}
+
+function updatePistolModelAnimation(dt){
+  const model = weaponModels && weaponModels.pistol;
+  const anim = pistolModelAnim();
+  if(!model || !anim) return;
+  if(player.weaponId !== 'pistol' || !model.visible){
+    resetPistolModelAnimation(anim);
+    return;
+  }
+
+  anim.root.position.copy(anim.rootBasePos);
+  anim.root.rotation.copy(anim.rootBaseRot);
+  anim.trigger.rotation.z = 0;
+  anim.hammer.rotation.z = -0.55;
+  let slideX = 0;
+  let magY = 0;
+
+  const fireDur = 0.34;
+  if(anim.fireT < fireDur){
+    anim.fireT += dt;
+    const t = pistolAnimClamp(anim.fireT / fireDur);
+    if(t < 0.10){
+      anim.trigger.rotation.z = -0.14 * pistolEaseOut(t / 0.10);
+    }else if(t < 0.54){
+      anim.trigger.rotation.z = -0.14 * (1 - pistolEaseInOut((t - 0.10) / 0.44));
+    }
+
+    if(t < 0.06){
+      anim.hammer.rotation.z = -0.55;
+    }else if(t < 0.14){
+      anim.hammer.rotation.z = -0.55 + 0.55 * pistolEaseOutCubic((t - 0.06) / 0.08);
+    }else if(t < 0.48){
+      anim.hammer.rotation.z = 0;
+    }else{
+      anim.hammer.rotation.z = -0.55 * pistolEaseInOut((t - 0.48) / 0.34);
+    }
+
+    if(t >= 0.08 && t < 0.25){
+      slideX = -0.50 * pistolEaseOutCubic((t - 0.08) / 0.17);
+    }else if(t >= 0.25 && t < 0.62){
+      slideX = -0.50 * Math.max(0, 1 - pistolEaseOutBack((t - 0.25) / 0.37));
+    }
+
+    if(t < 0.16){
+      const r = pistolEaseOut(t / 0.16);
+      anim.root.rotation.z = anim.rootBaseRot.z - 0.045 * r;
+      anim.root.position.x = anim.rootBasePos.x - 0.08 * r;
+      anim.root.position.y = anim.rootBasePos.y + 0.025 * r;
+    }else if(t < 0.64){
+      const r = 1 - pistolEaseInOut((t - 0.16) / 0.48);
+      anim.root.rotation.z = anim.rootBaseRot.z - 0.045 * r;
+      anim.root.position.x = anim.rootBasePos.x - 0.08 * r;
+      anim.root.position.y = anim.rootBasePos.y + 0.025 * r;
+    }else{
+      anim.fireT = 99;
+    }
+  }
+
+  if(player.reloading){
+    const rt = pistolAnimClamp(player.reloadT / Math.max(player.reloadTime, 0.001));
+    if(rt < 0.46) magY = -0.34 * Math.sin((rt / 0.46) * Math.PI);
+    if(rt > 0.56 && rt < 0.82){
+      const reloadSlide = -0.18 * Math.sin(((rt - 0.56) / 0.26) * Math.PI);
+      if(Math.abs(reloadSlide) > Math.abs(slideX)) slideX = reloadSlide;
+    }
+  }
+
+  anim.slide.position.x = slideX;
+  if(anim.mag) anim.mag.position.y = magY;
 }
 
 /* ============================================================
@@ -2485,7 +2938,7 @@ function addWeaponWallBuy(def, x, z, rotY, zone){
     display.visible = true;
     display.position.set(0, 1.78, 0.20);
     display.rotation.y = -Math.PI/2;     // muzzle to the right
-    display.scale.setScalar(2.0);
+    display.scale.multiplyScalar(2.0);
     display.traverse(m => {              // dull the upgrade glow strips on shop copies
       if(m.isMesh && m.material && m.material.isMeshBasicMaterial){
         m.material = new THREE.MeshBasicMaterial({color:0x101014});
@@ -2510,9 +2963,12 @@ function addWeaponWallBuy(def, x, z, rotY, zone){
 
   interactables.push({
     x, z, r:2.5, zone,
-    label(){ return player.ownedWeapons[def.id] ? null : 'BUY '+def.name+' - '+def.cost; },
+    label(){ return player.ownedWeapons[def.id] ? 'EQUIP '+def.name : 'BUY '+def.name+' - '+def.cost; },
     use(){
-      if(player.ownedWeapons[def.id]) return;
+      if(player.ownedWeapons[def.id]){
+        equipWeapon(def.id);
+        return;
+      }
       if(!spend(def.cost)) return;
       player.ownedWeapons[def.id] = true;
       player.weaponAmmo[def.id] = weaponMagSize(def);
@@ -5444,7 +5900,8 @@ function buildForge(data){
           break;
         }
         case 'weaponbuy': {
-          const def = WEAPON_DEFS[(p.weapon || '').replace(/[^a-zA-Z0-9_]/g, '')];
+          const weaponId = String(p.weapon || '').replace(/[^a-zA-Z0-9_]/g, '');
+          const def = WEAPON_DEFS[weaponId];
           if(def && def.cost) addWeaponWallBuy(def, obj.x, obj.z, ryRad, Number.isFinite(+p.zone) ? Math.round(+p.zone) : null);
           break;
         }
@@ -5887,6 +6344,7 @@ function updateGunModel(){
     muzzleFlash.position.set(0, def.muzzleY, def.muzzleZ);
     muzzleFlash.scale.setScalar(def.flashScale);
   }
+  if(def.id !== 'pistol') resetPistolModelAnimation();
   if(gun) gun.position.z = def.restZ;
 }
 
@@ -6479,6 +6937,7 @@ function tryFire(){
   muzzleFlash.rotation.z = Math.random()*Math.PI;
   gun.position.z = def.recoilZ;
   player.pitch = Math.min(player.pitch + def.recoilPitch, Math.PI/2 - 0.01);
+  if(def.id === 'pistol') triggerPistolModelFire();
 
   const scoredHits = new Set();
   const hostOwnsZombies = mpClientUsesHostZombies();
@@ -7757,6 +8216,7 @@ function update(dt){
       updateAmmoUI();
     }
   }
+  updatePistolModelAnimation(dt);
 
   // --- health regen ---
   if(player.health < player.maxHealth && t - player.lastHurt > player.regenDelay){
@@ -8011,33 +8471,37 @@ function animate(){
 }
 
 // ------------------------- boot -------------------------
-initEngine();
-loadMap(MAPS[0]);
-resetGame(false);
-initMenuSettings();
-setMenuView('home');
-updateMapUI();
-applyWeaponStats(true);
-const bootJoinId = mpUrlJoinId();
-if(bootJoinId){
-  setMenuView('multi');
-  mpUI.joinId.value = bootJoinId;
-  setTimeout(() => mpJoinHost(bootJoinId), 300);
+async function bootGame(){
+  await discoverForgeWeaponCatalog();
+  initEngine();
+  loadMap(MAPS[0]);
+  resetGame(false);
+  initMenuSettings();
+  setMenuView('home');
+  updateMapUI();
+  applyWeaponStats(true);
+  const bootJoinId = mpUrlJoinId();
+  if(bootJoinId){
+    setMenuView('multi');
+    mpUI.joinId.value = bootJoinId;
+    setTimeout(() => mpJoinHost(bootJoinId), 300);
+  }
+  // dev maps served next to the game (needs http, silently skipped on file://)
+  if(typeof fetch === 'function'){
+    fetch('maps/manifest.json').then(r => r.ok ? r.json() : null).then(list => {
+      if(!Array.isArray(list)) return;
+      for(const m of list){
+        if(!m || !m.url) continue;
+        MAPS.push({name:String(m.name || 'MAP').toUpperCase(), desc:m.desc || '',
+                   spawns:m.spawns, spawn:m.spawn, url:m.url, builtin:false});
+      }
+      updateMapUI();
+    }).catch(() => {});
+  }
+  updateHealthUI(); updateAmmoUI(); updateScoreUI(); updateWeaponUI();
+  animate();
 }
-// dev maps served next to the game (needs http, silently skipped on file://)
-if(typeof fetch === 'function'){
-  fetch('maps/manifest.json').then(r => r.ok ? r.json() : null).then(list => {
-    if(!Array.isArray(list)) return;
-    for(const m of list){
-      if(!m || !m.url) continue;
-      MAPS.push({name:String(m.name || 'MAP').toUpperCase(), desc:m.desc || '',
-                 spawns:m.spawns, spawn:m.spawn, url:m.url, builtin:false});
-    }
-    updateMapUI();
-  }).catch(() => {});
-}
-updateHealthUI(); updateAmmoUI(); updateScoreUI(); updateWeaponUI();
-animate();
+bootGame();
 
 })();
 </script>

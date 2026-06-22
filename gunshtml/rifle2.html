@@ -1,0 +1,1170 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>MK-IV Tactical — 3D Art Showcase</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    background: #08080a;
+    color: #ccc;
+    font-family: 'Segoe UI', 'Helvetica Neue', Arial, sans-serif;
+    overflow: hidden;
+    user-select: none;
+    -webkit-user-select: none;
+  }
+  #c { width: 100vw; height: 100vh; display: block; position: fixed; top:0; left:0; }
+
+  /* UI */
+  #ui {
+    position: fixed; top:0; left:0; width:100%; height:100%;
+    pointer-events: none; z-index:10;
+  }
+  #ui > * { pointer-events: auto; }
+
+  #title {
+    position: absolute; top:24px; left:50%; transform: translateX(-50%);
+    text-align: center; pointer-events: none;
+  }
+  #title h1 {
+    font-size: 20px; font-weight: 200; letter-spacing: 10px;
+    text-transform: uppercase; color: #d8d8d8;
+    text-shadow: 0 0 30px rgba(255,255,255,0.08);
+  }
+  #title .sub {
+    font-size: 10px; letter-spacing: 5px; color: #555; margin-top: 5px;
+    text-transform: uppercase;
+  }
+  #title .disclaimer {
+    font-size: 8px; letter-spacing: 2px; color: #333; margin-top: 3px;
+  }
+
+  #info {
+    position: absolute; bottom: 24px; left: 24px;
+    background: rgba(10,10,12,0.88); border: 1px solid rgba(255,255,255,0.06);
+    border-radius: 10px; padding: 18px 22px; backdrop-filter: blur(14px);
+    min-width: 200px;
+  }
+  #info h3 {
+    font-size: 9px; letter-spacing: 3px; text-transform: uppercase;
+    color: #666; margin-bottom: 10px; border-bottom: 1px solid rgba(255,255,255,0.05);
+    padding-bottom: 7px;
+  }
+  .ci {
+    font-size: 11px; color: #888; margin-bottom: 5px; display: flex;
+    align-items: center; gap: 8px;
+  }
+  .k {
+    display: inline-block; background: rgba(255,255,255,0.06);
+    border: 1px solid rgba(255,255,255,0.1); border-radius: 4px;
+    padding: 2px 7px; font-size: 9px; color: #aaa; min-width: 22px;
+    text-align: center; font-weight: 500;
+  }
+
+  #btns {
+    position: absolute; bottom: 24px; right: 24px;
+    display: flex; flex-direction: column; gap: 8px; align-items: flex-end;
+  }
+  .b {
+    background: rgba(12,12,14,0.88); border: 1px solid rgba(255,255,255,0.08);
+    color: #bbb; padding: 11px 26px; border-radius: 8px; cursor: pointer;
+    font-size: 11px; letter-spacing: 3px; text-transform: uppercase;
+    transition: all 0.25s; backdrop-filter: blur(14px); font-family: inherit;
+  }
+  .b:hover { background: rgba(35,35,40,0.92); border-color: rgba(255,255,255,0.18); color: #fff; }
+  .b-fire { background: rgba(160,35,25,0.65); border-color: rgba(255,70,50,0.25); }
+  .b-fire:hover { background: rgba(210,45,30,0.8); border-color: rgba(255,90,70,0.45); }
+  .b.on { background: rgba(50,100,180,0.25); border-color: rgba(90,150,255,0.35); color: #8bc; }
+
+  /* Stats */
+  #stats {
+    position: absolute; top: 24px; right: 24px;
+    font-size: 9px; letter-spacing: 2px; color: #444;
+    text-transform: uppercase; pointer-events: none;
+  }
+
+  /* Flash overlay */
+  #fov {
+    position: fixed; top:0; left:0; width:100%; height:100%;
+    background: radial-gradient(ellipse at 42% 48%, rgba(255,180,80,0.18), transparent 55%);
+    opacity: 0; pointer-events: none; z-index: 5;
+    transition: opacity 0.04s;
+  }
+
+  /* Loading */
+  #ld {
+    position: fixed; top:0; left:0; width:100%; height:100%;
+    background: #08080a; display: flex; align-items: center;
+    justify-content: center; flex-direction: column; gap: 16px;
+    z-index: 100; transition: opacity 1s;
+  }
+  #ld.h { opacity: 0; pointer-events: none; }
+  #ld .sp {
+    width: 36px; height: 36px; border: 1.5px solid rgba(255,255,255,0.08);
+    border-top-color: #555; border-radius: 50%; animation: sp 0.9s linear infinite;
+  }
+  #ld .lt { font-size: 9px; letter-spacing: 4px; color: #444; text-transform: uppercase; }
+  @keyframes sp { to { transform: rotate(360deg); } }
+</style>
+
+<script type="importmap">
+{
+  "imports": {
+    "three": "https://unpkg.com/three@0.172.0/build/three.module.js",
+    "three/addons/": "https://unpkg.com/three@0.172.0/examples/jsm/"
+  }
+}
+</script>
+</head>
+<body>
+
+<canvas id="c"></canvas>
+<div id="fov"></div>
+
+<div id="ld">
+  <div class="sp"></div>
+  <div class="lt">Initializing Showcase</div>
+</div>
+
+<div id="ui">
+  <div id="title">
+    <h1>MK-IV Tactical</h1>
+    <div class="sub">Interactive 3D Art Showcase</div>
+    <div class="disclaimer">Fictional non-functional art model</div>
+  </div>
+  <div id="stats"></div>
+  <div id="info">
+    <h3>Controls</h3>
+    <div class="ci"><span class="k">LMB</span> Rotate camera</div>
+    <div class="ci"><span class="k">Scroll</span> Zoom in / out</div>
+    <div class="ci"><span class="k">Space</span> Fire animation</div>
+    <div class="ci"><span class="k">R</span> Reset camera</div>
+    <div class="ci"><span class="k">I</span> Toggle inspect</div>
+  </div>
+  <div id="btns">
+    <button class="b b-fire" id="bf">⚡ Fire</button>
+    <button class="b" id="bi">Inspect Mode</button>
+    <button class="b" id="br">Reset View</button>
+  </div>
+</div>
+
+<script type="module">
+// ================================================================
+// IMPORTS
+// ================================================================
+import * as THREE from 'three';
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
+import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
+import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js';
+import { ShaderPass } from 'three/addons/postprocessing/ShaderPass.js';
+import { FXAAShader } from 'three/addons/shaders/FXAAShader.js';
+
+// ================================================================
+// RENDERER & SCENE
+// ================================================================
+const canvas = document.getElementById('c');
+const renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
+renderer.setSize(window.innerWidth, window.innerHeight);
+renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+renderer.shadowMap.enabled = true;
+renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+renderer.toneMapping = THREE.ACESFilmicToneMapping;
+renderer.toneMappingExposure = 1.15;
+
+const scene = new THREE.Scene();
+scene.background = new THREE.Color(0x08080a);
+scene.fog = new THREE.FogExp2(0x08080a, 0.028);
+
+const camera = new THREE.PerspectiveCamera(38, window.innerWidth / window.innerHeight, 0.01, 100);
+camera.position.set(2.8, 1.4, 3.8);
+
+// ================================================================
+// ORBIT CONTROLS
+// ================================================================
+const controls = new OrbitControls(camera, canvas);
+controls.enableDamping = true;
+controls.dampingFactor = 0.05;
+controls.minDistance = 1.2;
+controls.maxDistance = 8;
+controls.target.set(0, 0, 0);
+controls.maxPolarAngle = Math.PI * 0.88;
+controls.enablePan = false;
+
+// ================================================================
+// POST-PROCESSING
+// ================================================================
+const composer = new EffectComposer(renderer);
+composer.addPass(new RenderPass(scene, camera));
+
+const bloomPass = new UnrealBloomPass(
+  new THREE.Vector2(window.innerWidth, window.innerHeight),
+  0.25, 0.6, 0.85
+);
+composer.addPass(bloomPass);
+
+const fxaaPass = new ShaderPass(FXAAShader);
+fxaaPass.uniforms['resolution'].value.set(1 / window.innerWidth, 1 / window.innerHeight);
+composer.addPass(fxaaPass);
+
+// ================================================================
+// PROCEDURAL TEXTURE HELPERS
+// ================================================================
+function createNoiseCanvas(w, h, baseR, baseG, baseB, intensity) {
+  const cv = document.createElement('canvas');
+  cv.width = w; cv.height = h;
+  const ctx = cv.getContext('2d');
+  const img = ctx.createImageData(w, h);
+  for (let i = 0; i < img.data.length; i += 4) {
+    const n = (Math.random() - 0.5) * intensity;
+    img.data[i]   = Math.max(0, Math.min(255, baseR + n));
+    img.data[i+1] = Math.max(0, Math.min(255, baseG + n));
+    img.data[i+2] = Math.max(0, Math.min(255, baseB + n));
+    img.data[i+3] = 255;
+  }
+  ctx.putImageData(img, 0, 0);
+  return cv;
+}
+
+function createScratchCanvas(w, h) {
+  const cv = document.createElement('canvas');
+  cv.width = w; cv.height = h;
+  const ctx = cv.getContext('2d');
+  ctx.fillStyle = '#808080';
+  ctx.fillRect(0, 0, w, h);
+  // Random scratches
+  ctx.strokeStyle = 'rgba(160,160,160,0.15)';
+  ctx.lineWidth = 0.5;
+  for (let i = 0; i < 60; i++) {
+    ctx.beginPath();
+    const x = Math.random() * w;
+    const y = Math.random() * h;
+    const len = Math.random() * 40 + 5;
+    const ang = Math.random() * Math.PI;
+    ctx.moveTo(x, y);
+    ctx.lineTo(x + Math.cos(ang) * len, y + Math.sin(ang) * len);
+    ctx.stroke();
+  }
+  // Small nicks
+  ctx.fillStyle = 'rgba(120,120,120,0.3)';
+  for (let i = 0; i < 30; i++) {
+    ctx.fillRect(Math.random() * w, Math.random() * h, 1 + Math.random() * 2, 1);
+  }
+  return cv;
+}
+
+function createGripTextureCanvas(w, h) {
+  const cv = document.createElement('canvas');
+  cv.width = w; cv.height = h;
+  const ctx = cv.getContext('2d');
+  ctx.fillStyle = '#181818';
+  ctx.fillRect(0, 0, w, h);
+  // Diamond pattern
+  const spacing = 6;
+  ctx.fillStyle = '#222';
+  for (let y = 0; y < h; y += spacing) {
+    for (let x = 0; x < w; x += spacing) {
+      const ox = (Math.floor(y / spacing) % 2) * (spacing / 2);
+      ctx.beginPath();
+      ctx.arc(x + ox, y, 1.5, 0, Math.PI * 2);
+      ctx.fill();
+    }
+  }
+  return cv;
+}
+
+// ================================================================
+// MATERIALS
+// ================================================================
+const noiseTex = new THREE.CanvasTexture(createNoiseCanvas(256, 256, 28, 28, 30, 12));
+noiseTex.wrapS = noiseTex.wrapT = THREE.RepeatWrapping;
+
+const scratchTex = new THREE.CanvasTexture(createScratchCanvas(512, 512));
+scratchTex.wrapS = scratchTex.wrapT = THREE.RepeatWrapping;
+
+const gripTex = new THREE.CanvasTexture(createGripTextureCanvas(128, 128));
+gripTex.wrapS = gripTex.wrapT = THREE.RepeatWrapping;
+
+function metalMat(color, rough, metal, opts = {}) {
+  return new THREE.MeshStandardMaterial({
+    color: new THREE.Color(color),
+    roughness: rough,
+    metalness: metal,
+    roughnessMap: opts.noScratch ? null : scratchTex,
+    map: opts.map || noiseTex,
+    envMapIntensity: opts.envInt || 1.3,
+    flatShading: opts.flat || false,
+  });
+}
+
+const M = {
+  receiver:   metalMat(0x1a1a1e, 0.52, 0.88),
+  barrel:     metalMat(0x1e1e22, 0.35, 0.92),
+  handguard:  metalMat(0x1c1c20, 0.58, 0.82),
+  grip:       metalMat(0x141416, 0.82, 0.2, { map: gripTex }),
+  stock:      metalMat(0x171719, 0.72, 0.35),
+  magazine:   metalMat(0x18181c, 0.48, 0.88),
+  accent:     metalMat(0x282830, 0.42, 0.92),
+  dark:       metalMat(0x0e0e10, 0.88, 0.12, { noScratch: true }),
+  sight:      metalMat(0x242428, 0.32, 0.92),
+  opticGlass: new THREE.MeshPhysicalMaterial({
+    color: 0x2244aa, roughness: 0.02, metalness: 0.0,
+    transparent: true, opacity: 0.4, transmission: 0.5,
+    thickness: 0.5, envMapIntensity: 2,
+  }),
+  flash:      new THREE.MeshBasicMaterial({ color: 0xffaa44, transparent: true, opacity: 0, side: THREE.DoubleSide, depthWrite: false, blending: THREE.AdditiveBlending }),
+  flashCore:  new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0, side: THREE.DoubleSide, depthWrite: false, blending: THREE.AdditiveBlending }),
+  smoke:      new THREE.MeshBasicMaterial({ color: 0x666666, transparent: true, opacity: 0, depthWrite: false }),
+  casing:     new THREE.MeshStandardMaterial({ color: 0xccaa33, roughness: 0.2, metalness: 0.95 }),
+  lens:       new THREE.MeshStandardMaterial({ color: 0xffe888, roughness: 0.0, metalness: 0.0, emissive: 0x443300, emissiveIntensity: 0.4, transparent: true, opacity: 0.65 }),
+  rubberPad:  metalMat(0x0c0c0e, 0.95, 0.05, { noScratch: true }),
+};
+
+// ================================================================
+// GEOMETRY HELPERS
+// ================================================================
+function bevBox(w, h, d, bev) {
+  const s = new THREE.Shape();
+  const hw = w/2, hh = h/2, b = bev || 0.008;
+  s.moveTo(-hw+b, -hh); s.lineTo(hw-b, -hh);
+  s.quadraticCurveTo(hw, -hh, hw, -hh+b);
+  s.lineTo(hw, hh-b); s.quadraticCurveTo(hw, hh, hw-b, hh);
+  s.lineTo(-hw+b, hh); s.quadraticCurveTo(-hw, hh, -hw, hh-b);
+  s.lineTo(-hw, -hh+b); s.quadraticCurveTo(-hw, -hh, -hw+b, -hh);
+  const g = new THREE.ExtrudeGeometry(s, { depth: d, bevelEnabled: false });
+  g.translate(0, 0, -d/2);
+  return g;
+}
+
+function cyl(rT, rB, h, seg) {
+  const g = new THREE.CylinderGeometry(rT, rB, h, seg || 16);
+  return g;
+}
+
+function addMesh(geo, mat, pos, rot, parent, shadow) {
+  const m = new THREE.Mesh(geo, mat);
+  if (pos) m.position.set(pos[0], pos[1], pos[2]);
+  if (rot) m.rotation.set(rot[0], rot[1], rot[2]);
+  if (shadow) { m.castShadow = true; m.receiveShadow = true; }
+  (parent || rifleGroup).add(m);
+  return m;
+}
+
+// ================================================================
+// RIFLE GROUP
+// ================================================================
+const rifleGroup = new THREE.Group();
+scene.add(rifleGroup);
+
+const boltGroup = new THREE.Group();
+const triggerGroup = new THREE.Group();
+const flashGroup = new THREE.Group();
+const casingGroup = new THREE.Group();
+rifleGroup.add(boltGroup, triggerGroup, flashGroup, casingGroup);
+
+// ================================================================
+// UPPER RECEIVER
+// ================================================================
+addMesh(bevBox(0.18, 0.155, 1.12, 0.012), M.receiver, [0, 0.082, 0.14], null, rifleGroup, true);
+
+// Receiver bevel edges (subtle highlight strips)
+addMesh(new THREE.BoxGeometry(0.005, 0.005, 1.1), M.accent, [0.088, 0.157, 0.14], null, rifleGroup);
+addMesh(new THREE.BoxGeometry(0.005, 0.005, 1.1), M.accent, [-0.088, 0.157, 0.14], null, rifleGroup);
+addMesh(new THREE.BoxGeometry(0.005, 0.005, 1.1), M.accent, [0.088, 0.007, 0.14], null, rifleGroup);
+addMesh(new THREE.BoxGeometry(0.005, 0.005, 1.1), M.accent, [-0.088, 0.007, 0.14], null, rifleGroup);
+
+// Flat-top picatinny rail
+const railBase = addMesh(new THREE.BoxGeometry(0.155, 0.018, 0.85), M.accent, [0, 0.168, -0.02]);
+for (let i = 0; i < 22; i++) {
+  addMesh(new THREE.BoxGeometry(0.14, 0.014, 0.007), M.sight, [0, 0.178, -0.4 + i * 0.042]);
+}
+
+// ================================================================
+// LOWER RECEIVER
+// ================================================================
+addMesh(bevBox(0.168, 0.12, 0.44, 0.01), M.receiver, [0, -0.038, 0.38], null, rifleGroup, true);
+
+// Magazine well
+addMesh(bevBox(0.148, 0.055, 0.115, 0.008), M.receiver, [0, -0.098, 0.4]);
+
+// Lower receiver details - bolt catch
+addMesh(new THREE.BoxGeometry(0.008, 0.03, 0.018), M.accent, [-0.088, -0.02, 0.28]);
+addMesh(new THREE.BoxGeometry(0.012, 0.008, 0.012), M.accent, [-0.092, -0.005, 0.28]);
+
+// ================================================================
+// BARREL
+// ================================================================
+const barrelGeo = cyl(0.024, 0.026, 1.35, 20);
+barrelGeo.rotateX(Math.PI / 2);
+addMesh(barrelGeo, M.barrel, [0, 0.06, -0.58], null, rifleGroup, true);
+
+// Barrel profile - thicker at chamber
+addMesh(cyl(0.032, 0.032, 0.08, 12), M.barrel, [0, 0.06, -0.35], [Math.PI/2, 0, 0]);
+
+// Barrel nut
+addMesh(cyl(0.044, 0.044, 0.05, 8), M.accent, [0, 0.06, -0.32], [Math.PI/2, 0, 0]);
+
+// Gas block
+addMesh(new THREE.BoxGeometry(0.055, 0.055, 0.035), M.accent, [0, 0.06, -0.78]);
+addMesh(new THREE.BoxGeometry(0.02, 0.03, 0.01), M.accent, [0, 0.095, -0.78]); // gas block tower
+
+// Gas tube (decorative)
+const gtGeo = cyl(0.007, 0.007, 0.48, 8);
+gtGeo.rotateX(Math.PI / 2);
+addMesh(gtGeo, M.accent, [0, 0.1, -0.53]);
+
+// ================================================================
+// MUZZLE DEVICE
+// ================================================================
+addMesh(cyl(0.031, 0.028, 0.13, 14), M.barrel, [0, 0.06, -1.27], [Math.PI/2, 0, 0]);
+
+// Muzzle device prongs/slots
+for (let i = 0; i < 6; i++) {
+  const a = (i * Math.PI) / 3;
+  const slot = addMesh(new THREE.BoxGeometry(0.004, 0.068, 0.025), M.receiver, [0, 0.06, -1.29]);
+  slot.rotation.z = a;
+}
+
+// Muzzle crown
+const crG = new THREE.TorusGeometry(0.03, 0.005, 8, 18);
+crG.rotateY(Math.PI / 2);
+addMesh(crG, M.accent, [0, 0.06, -1.34]);
+
+// Crush washer
+addMesh(cyl(0.033, 0.033, 0.008, 12), M.accent, [0, 0.06, -1.2], [Math.PI/2, 0, 0]);
+
+// ================================================================
+// HANDGUARD (M-LOK style free-float)
+// ================================================================
+addMesh(bevBox(0.158, 0.148, 0.62, 0.018), M.handguard, [0, 0.055, -0.56], null, rifleGroup, true);
+
+// Handguard internal hollow effect (darker inset panels)
+for (let side = -1; side <= 1; side += 2) {
+  addMesh(new THREE.BoxGeometry(0.004, 0.1, 0.58), M.dark, [side * 0.078, 0.055, -0.56]);
+}
+
+// M-LOK slots on sides
+for (let side = -1; side <= 1; side += 2) {
+  for (let i = 0; i < 5; i++) {
+    const slotShape = new THREE.Shape();
+    slotShape.moveTo(-0.025, -0.008);
+    slotShape.lineTo(0.025, -0.008);
+    slotShape.quadraticCurveTo(0.03, -0.008, 0.03, -0.003);
+    slotShape.lineTo(0.03, 0.003);
+    slotShape.quadraticCurveTo(0.03, 0.008, 0.025, 0.008);
+    slotShape.lineTo(-0.025, 0.008);
+    slotShape.quadraticCurveTo(-0.03, 0.008, -0.03, 0.003);
+    slotShape.lineTo(-0.03, -0.003);
+    slotShape.quadraticCurveTo(-0.03, -0.008, -0.025, -0.008);
+    const slotGeo = new THREE.ExtrudeGeometry(slotShape, { depth: 0.006, bevelEnabled: false });
+    const slot = addMesh(slotGeo, M.dark, [side * 0.079, 0.05, -0.38 - i * 0.1]);
+    slot.rotation.y = side > 0 ? Math.PI / 2 : -Math.PI / 2;
+  }
+}
+
+// Bottom rail section
+for (let i = 0; i < 10; i++) {
+  addMesh(new THREE.BoxGeometry(0.1, 0.01, 0.007), M.accent, [0, -0.02, -0.32 - i * 0.038]);
+}
+
+// Top rail continuation on handguard
+for (let i = 0; i < 12; i++) {
+  addMesh(new THREE.BoxGeometry(0.14, 0.014, 0.007), M.sight, [0, 0.138, -0.3 - i * 0.042]);
+}
+
+// Handguard heat shield vents
+for (let side = -1; side <= 1; side += 2) {
+  for (let i = 0; i < 4; i++) {
+    const ventGeo = cyl(0.01, 0.01, 0.015, 6);
+    ventGeo.rotateZ(Math.PI / 2);
+    addMesh(ventGeo, M.dark, [side * 0.08, 0.1, -0.42 - i * 0.12]);
+  }
+}
+
+// QD sling mount on handguard
+for (let side = -1; side <= 1; side += 2) {
+  const qd = new THREE.TorusGeometry(0.01, 0.003, 6, 10);
+  qd.rotateY(Math.PI / 2);
+  addMesh(qd, M.accent, [side * 0.082, -0.01, -0.65]);
+}
+
+// ================================================================
+// FRONT SIGHT
+// ================================================================
+addMesh(new THREE.BoxGeometry(0.028, 0.085, 0.018), M.sight, [0, 0.14, -0.84]);
+addMesh(cyl(0.003, 0.003, 0.055, 6), M.sight, [0, 0.195, -0.84]);
+
+// Sight ears
+for (let s = -1; s <= 1; s += 2) {
+  addMesh(new THREE.BoxGeometry(0.006, 0.065, 0.012), M.sight, [s * 0.016, 0.163, -0.84]);
+}
+// Crossbar
+addMesh(new THREE.BoxGeometry(0.04, 0.005, 0.006), M.sight, [0, 0.2, -0.84]);
+
+// Bayonet lug (decorative)
+addMesh(new THREE.BoxGeometry(0.015, 0.025, 0.02), M.accent, [0, -0.005, -0.84]);
+
+// ================================================================
+// REAR SIGHT (folding style)
+// ================================================================
+addMesh(new THREE.BoxGeometry(0.048, 0.042, 0.022), M.sight, [0, 0.178, 0.1]);
+const rAp = new THREE.TorusGeometry(0.009, 0.003, 6, 14);
+rAp.rotateX(Math.PI / 2);
+addMesh(rAp, M.sight, [0, 0.19, 0.1]);
+// Windage knob
+addMesh(cyl(0.008, 0.008, 0.02, 8), M.accent, [0.03, 0.185, 0.1], [0, 0, Math.PI/2]);
+
+// ================================================================
+// HOLOGRAPHIC SIGHT (fictional optic)
+// ================================================================
+// Mount
+addMesh(new THREE.BoxGeometry(0.12, 0.025, 0.1), M.accent, [0, 0.185, -0.08]);
+// Mount screws
+for (let z = -0.1; z <= -0.06; z += 0.04) {
+  for (let s = -1; s <= 1; s += 2) {
+    addMesh(cyl(0.004, 0.004, 0.008, 6), M.dark, [s * 0.055, 0.195, z], [0, 0, Math.PI/2]);
+  }
+}
+
+// Optic body
+addMesh(bevBox(0.095, 0.075, 0.14, 0.008), M.sight, [0, 0.235, -0.08]);
+
+// Optic hood
+addMesh(new THREE.BoxGeometry(0.098, 0.008, 0.145), M.sight, [0, 0.278, -0.08]);
+
+// Optic windows
+addMesh(new THREE.PlaneGeometry(0.06, 0.048), M.opticGlass, [0, 0.24, -0.151]);
+const rw = addMesh(new THREE.PlaneGeometry(0.06, 0.048), M.opticGlass, [0, 0.24, -0.009]);
+rw.rotation.y = Math.PI;
+
+// Side buttons
+for (let s = -1; s <= 1; s += 2) {
+  addMesh(cyl(0.007, 0.007, 0.012, 8), M.accent, [s * 0.052, 0.245, -0.06], [0, 0, Math.PI/2]);
+  addMesh(cyl(0.005, 0.005, 0.012, 8), M.accent, [s * 0.052, 0.235, -0.1], [0, 0, Math.PI/2]);
+}
+
+// Optic battery cap
+addMesh(cyl(0.012, 0.012, 0.01, 8), M.accent, [0.05, 0.26, -0.08], [0, 0, Math.PI/2]);
+
+// ================================================================
+// BOLT CARRIER GROUP (exterior visuals only)
+// ================================================================
+// Charging handle
+addMesh(new THREE.BoxGeometry(0.055, 0.014, 0.038), M.accent, [0, 0.14, 0.44], null, boltGroup);
+addMesh(new THREE.BoxGeometry(0.022, 0.01, 0.028), M.receiver, [-0.035, 0.14, 0.45], null, boltGroup);
+// Latch detail
+addMesh(new THREE.BoxGeometry(0.008, 0.008, 0.015), M.dark, [-0.038, 0.148, 0.45], null, boltGroup);
+
+// Bolt handle visible in ejection port area
+addMesh(new THREE.BoxGeometry(0.025, 0.018, 0.055), M.accent, [0.1, 0.1, 0.21], null, boltGroup);
+addMesh(cyl(0.01, 0.01, 0.025, 8), M.accent, [0.112, 0.1, 0.21], [0, 0, Math.PI/2], boltGroup);
+
+// Bolt face
+addMesh(cyl(0.014, 0.014, 0.005, 8), M.barrel, [0.089, 0.06, 0.21], [0, 0, Math.PI/2], boltGroup);
+
+// ================================================================
+// FORWARD ASSIST
+// ================================================================
+addMesh(cyl(0.013, 0.013, 0.028, 14), M.accent, [0.1, 0.1, 0.36], [0, 0, Math.PI/2]);
+// Serrations
+for (let i = 0; i < 6; i++) {
+  addMesh(new THREE.BoxGeometry(0.006, 0.003, 0.026), M.receiver, [0.115, 0.093 + i * 0.003, 0.36]);
+}
+
+// ================================================================
+// DUST COVER
+// ================================================================
+addMesh(new THREE.BoxGeometry(0.005, 0.055, 0.115), M.accent, [0.092, 0.04, 0.24]);
+// Dust cover rod
+addMesh(cyl(0.003, 0.003, 0.015, 6), M.receiver, [0.092, 0.012, 0.19], [Math.PI/2, 0, 0]);
+// Embossed line
+addMesh(new THREE.BoxGeometry(0.002, 0.002, 0.1), M.dark, [0.095, 0.04, 0.24]);
+
+// ================================================================
+// EJECTION PORT
+// ================================================================
+addMesh(new THREE.BoxGeometry(0.006, 0.038, 0.075), M.dark, [0.091, 0.06, 0.21]);
+// Brass deflector
+addMesh(bevBox(0.02, 0.04, 0.025, 0.005), M.accent, [0.085, 0.1, 0.16]);
+
+// ================================================================
+// SELECTOR SWITCH
+// ================================================================
+for (let s = -1; s <= 1; s += 2) {
+  addMesh(cyl(0.009, 0.009, 0.008, 14), M.accent, [s * 0.088, -0.01, 0.42], [0, 0, Math.PI/2]);
+  // Lever
+  const lev = addMesh(new THREE.BoxGeometry(0.005, 0.003, 0.032), M.accent, [s * 0.092, -0.01, 0.44]);
+  lev.rotation.x = -0.45;
+}
+// Position markings
+for (let i = 0; i < 3; i++) {
+  addMesh(new THREE.SphereGeometry(0.0025, 5, 5), M.dark, [0.094, -0.016 + i * 0.01, 0.455]);
+}
+
+// ================================================================
+// TRIGGER GUARD
+// ================================================================
+const tgs = new THREE.Shape();
+tgs.moveTo(0, 0);
+tgs.lineTo(0.13, 0);
+tgs.lineTo(0.13, -0.035);
+tgs.quadraticCurveTo(0.13, -0.072, 0.1, -0.072);
+tgs.lineTo(0.035, -0.072);
+tgs.quadraticCurveTo(0.005, -0.072, 0.005, -0.04);
+tgs.lineTo(0, 0);
+const tgGeo = new THREE.ExtrudeGeometry(tgs, { depth: 0.013, bevelEnabled: true, bevelThickness: 0.003, bevelSize: 0.003, bevelSegments: 2 });
+tgGeo.translate(-0.065, 0, -0.0065);
+addMesh(tgGeo, M.receiver, [0, -0.1, 0.38], null, rifleGroup, true);
+
+// ================================================================
+// TRIGGER
+// ================================================================
+const trig = addMesh(new THREE.BoxGeometry(0.007, 0.038, 0.014), M.accent, [0, -0.1, 0.4], null, triggerGroup);
+// Trigger shoe
+addMesh(new THREE.BoxGeometry(0.008, 0.005, 0.018), M.accent, [0, -0.12, 0.4], null, triggerGroup);
+
+// Trigger & hammer pins
+for (let z of [0.36, 0.44]) {
+  addMesh(cyl(0.005, 0.005, 0.19, 8), M.receiver, [0, -0.03, z], [0, 0, Math.PI/2]);
+}
+
+// ================================================================
+// MAGAZINE
+// ================================================================
+const magGroup = new THREE.Group();
+rifleGroup.add(magGroup);
+
+const magBody = addMesh(bevBox(0.098, 0.22, 0.058, 0.008), M.magazine, [0, -0.23, 0.4], [0.04, 0, 0], magGroup, true);
+
+// Magazine ribs
+for (let s = -1; s <= 1; s += 2) {
+  addMesh(new THREE.BoxGeometry(0.004, 0.2, 0.05), M.receiver, [s * 0.05, -0.22, 0.4], [0.04, 0, 0], magGroup);
+}
+
+// Magazine floor plate
+addMesh(new THREE.BoxGeometry(0.098, 0.012, 0.058), M.accent, [0, -0.342, 0.41], null, magGroup);
+
+// Magazine catch
+addMesh(new THREE.BoxGeometry(0.014, 0.014, 0.012), M.accent, [0.088, -0.075, 0.4]);
+
+// Feed lips hint
+addMesh(new THREE.BoxGeometry(0.06, 0.005, 0.04), M.dark, [0, -0.125, 0.4], null, magGroup);
+
+// ================================================================
+// PISTOL GRIP
+// ================================================================
+const gShape = new THREE.Shape();
+gShape.moveTo(0, 0);
+gShape.lineTo(0.042, 0);
+gShape.lineTo(0.052, -0.06);
+gShape.lineTo(0.048, -0.13);
+gShape.quadraticCurveTo(0.045, -0.175, 0.025, -0.182);
+gShape.lineTo(0.005, -0.182);
+gShape.quadraticCurveTo(-0.025, -0.178, -0.028, -0.14);
+gShape.lineTo(-0.02, -0.04);
+gShape.lineTo(-0.01, 0);
+gShape.lineTo(0, 0);
+const gripGeo = new THREE.ExtrudeGeometry(gShape, { depth: 0.062, bevelEnabled: true, bevelThickness: 0.006, bevelSize: 0.006, bevelSegments: 4 });
+gripGeo.translate(-0.012, 0, -0.031);
+addMesh(gripGeo, M.grip, [0, -0.098, 0.5], [-0.12, 0, 0], rifleGroup, true);
+
+// Grip screw
+addMesh(cyl(0.006, 0.006, 0.01, 6), M.receiver, [0.035, -0.16, 0.5], [0, 0, Math.PI/2]);
+// Screw slot
+addMesh(new THREE.BoxGeometry(0.002, 0.01, 0.002), M.dark, [0.04, -0.16, 0.5]);
+
+// Grip bottom plug
+addMesh(new THREE.BoxGeometry(0.04, 0.008, 0.048), M.accent, [0.01, -0.278, 0.535]);
+
+// Grip beavertail / web
+addMesh(new THREE.BoxGeometry(0.04, 0.015, 0.03), M.receiver, [0.01, -0.098, 0.475]);
+
+// ================================================================
+// STOCK
+// ================================================================
+// Buffer tube
+addMesh(cyl(0.026, 0.03, 0.46, 14), M.accent, [0, 0.052, 0.84], [Math.PI/2, 0, 0]);
+
+// Castle nut
+addMesh(cyl(0.034, 0.034, 0.02, 8), M.accent, [0, 0.052, 0.6], [Math.PI/2, 0, 0]);
+
+// End plate
+addMesh(new THREE.BoxGeometry(0.06, 0.06, 0.008), M.accent, [0, 0.04, 0.61]);
+// Sling loop on end plate
+addMesh(new THREE.BoxGeometry(0.008, 0.025, 0.01), M.accent, [0, 0.01, 0.61]);
+
+// Stock body
+addMesh(bevBox(0.078, 0.115, 0.3, 0.01), M.stock, [0, 0.048, 0.96], null, rifleGroup, true);
+
+// Buttpad
+addMesh(new THREE.BoxGeometry(0.068, 0.13, 0.016), M.rubberPad, [0, 0.048, 1.115]);
+// Buttpad texture lines
+for (let i = 0; i < 7; i++) {
+  addMesh(new THREE.BoxGeometry(0.058, 0.003, 0.003), M.dark, [0, 0.01 + i * 0.013, 1.124]);
+}
+
+// Adjustment lever
+addMesh(new THREE.BoxGeometry(0.038, 0.018, 0.012), M.accent, [0, -0.015, 0.86]);
+
+// Adjustment notches on buffer tube
+for (let i = 0; i < 6; i++) {
+  addMesh(new THREE.BoxGeometry(0.012, 0.008, 0.012), M.dark, [0, -0.03, 0.76 + i * 0.038]);
+}
+
+// Stock cheek weld
+addMesh(bevBox(0.072, 0.028, 0.15, 0.006), M.stock, [0, 0.12, 0.93]);
+
+// QD sling mount on stock
+const qdS = new THREE.TorusGeometry(0.011, 0.004, 6, 10);
+qdS.rotateY(Math.PI / 2);
+addMesh(qdS, M.accent, [0.044, 0.015, 0.9]);
+
+// Stock toe
+addMesh(new THREE.BoxGeometry(0.068, 0.02, 0.08), M.stock, [0, -0.02, 1.06]);
+
+// ================================================================
+// PINS & FASTENERS
+// ================================================================
+// Takedown pins
+for (let z of [0.2, 0.56]) {
+  for (let s = -1; s <= 1; s += 2) {
+    addMesh(cyl(0.006, 0.006, 0.012, 8), M.accent, [s * 0.092, 0.0, z], [0, 0, Math.PI/2]);
+  }
+}
+
+// Body pins
+const pinPositions = [
+  [0.09, 0.02, 0.3], [-0.09, 0.02, 0.3],
+  [0.09, 0.02, 0.5], [-0.09, 0.02, 0.5],
+  [0.09, 0.08, 0.5], [-0.09, 0.08, 0.5],
+];
+for (const p of pinPositions) {
+  addMesh(cyl(0.004, 0.004, 0.008, 6), M.dark, p, [0, 0, Math.PI/2]);
+}
+
+// Panel lines / seams
+for (let y of [0.125, -0.015]) {
+  addMesh(new THREE.BoxGeometry(0.002, 0.001, 0.45), M.dark, [0.091, y, 0.14]);
+  addMesh(new THREE.BoxGeometry(0.002, 0.001, 0.45), M.dark, [-0.091, y, 0.14]);
+}
+
+// Receiver serial number plate area (decorative)
+addMesh(new THREE.BoxGeometry(0.002, 0.025, 0.06), M.dark, [-0.091, 0.03, 0.35]);
+
+// ================================================================
+// FLASHLIGHT ACCESSORY
+// ================================================================
+const flGroup = new THREE.Group();
+rifleGroup.add(flGroup);
+
+addMesh(cyl(0.017, 0.019, 0.13, 12), M.sight, [0, 0, 0], [Math.PI/2, 0, 0], flGroup);
+addMesh(cyl(0.024, 0.019, 0.025, 12), M.sight, [0, 0, -0.078], [Math.PI/2, 0, 0], flGroup);
+addMesh(new THREE.CircleGeometry(0.023, 14), M.lens, [0, 0, -0.091], null, flGroup);
+
+// Flashlight mount
+addMesh(new THREE.BoxGeometry(0.042, 0.022, 0.028), M.accent, [0, 0.023, 0], null, flGroup);
+// Tail cap
+addMesh(cyl(0.019, 0.017, 0.015, 10), M.accent, [0, 0, 0.072], [Math.PI/2, 0, 0], flGroup);
+// Switch button
+addMesh(cyl(0.008, 0.008, 0.005, 8), M.rubberPad, [0, 0, 0.08], [Math.PI/2, 0, 0], flGroup);
+
+// Knurling
+for (let i = 0; i < 10; i++) {
+  const a = (i * Math.PI * 2) / 10;
+  addMesh(new THREE.BoxGeometry(0.002, 0.002, 0.06), M.dark,
+    [Math.cos(a) * 0.019, Math.sin(a) * 0.019, 0], [0, 0, a], flGroup);
+}
+
+flGroup.position.set(-0.088, -0.005, -0.58);
+
+// Flashlight wire/tape (decorative)
+addMesh(cyl(0.003, 0.003, 0.08, 6), M.dark, [-0.075, 0.02, -0.54], [Math.PI/2, 0, 0]);
+
+// ================================================================
+// VERTICAL FOREGRIP
+// ================================================================
+const vfg = new THREE.Group();
+rifleGroup.add(vfg);
+
+addMesh(bevBox(0.038, 0.095, 0.032, 0.005), M.grip, [0, -0.048, 0], null, vfg);
+addMesh(new THREE.BoxGeometry(0.044, 0.012, 0.036), M.accent, [0, 0.005, 0], null, vfg);
+addMesh(new THREE.BoxGeometry(0.04, 0.008, 0.034), M.accent, [0, -0.1, 0], null, vfg);
+
+// Foregrip texture
+for (let i = 0; i < 5; i++) {
+  for (let s = -1; s <= 1; s += 2) {
+    addMesh(new THREE.BoxGeometry(0.003, 0.01, 0.028), M.dark,
+      [s * 0.02, -0.03 - i * 0.016, 0], null, vfg);
+  }
+}
+
+vfg.position.set(0, -0.025, -0.46);
+
+// ================================================================
+// MUZZLE FLASH EFFECTS (hidden initially)
+// ================================================================
+const flashMeshes = [];
+
+// Main flash planes
+for (let i = 0; i < 3; i++) {
+  const fg = new THREE.PlaneGeometry(0.35, 0.35);
+  const fm = M.flash.clone();
+  const mesh = addMesh(fg, fm, [0, 0.06, -1.45], [0, i * Math.PI / 3, 0], flashGroup);
+  flashMeshes.push(mesh);
+}
+
+// Core bright flash
+const coreGeo = new THREE.SphereGeometry(0.04, 8, 8);
+const coreMat = M.flashCore.clone();
+const coreMesh = addMesh(coreGeo, coreMat, [0, 0.06, -1.36], null, flashGroup);
+flashMeshes.push(coreMesh);
+
+// Star burst
+const starGeo = new THREE.CircleGeometry(0.1, 6);
+const starMat = M.flash.clone();
+const starMesh = addMesh(starGeo, starMat, [0, 0.06, -1.38], null, flashGroup);
+flashMeshes.push(starMesh);
+
+// Smoke particles
+const smokeParts = [];
+for (let i = 0; i < 8; i++) {
+  const sg = new THREE.SphereGeometry(0.025 + Math.random() * 0.035, 6, 6);
+  const sm = M.smoke.clone();
+  const smesh = addMesh(sg, sm, [
+    (Math.random() - 0.5) * 0.06,
+    0.06 + (Math.random() - 0.5) * 0.04,
+    -1.38 - Math.random() * 0.15
+  ], null, flashGroup);
+  smesh.visible = false;
+  smesh.userData.basePos = smesh.position.clone();
+  smesh.userData.drift = new THREE.Vector3(
+    (Math.random() - 0.5) * 0.3,
+    0.3 + Math.random() * 0.4,
+    -0.8 - Math.random() * 0.5
+  );
+  smokeParts.push(smesh);
+}
+
+// ================================================================
+// EJECTING CASING
+// ================================================================
+const casGeo = cyl(0.007, 0.007, 0.035, 8);
+const casing = addMesh(casGeo, M.casing, [0.1, 0.1, 0.22], null, casingGroup);
+casing.visible = false;
+let casVel = new THREE.Vector3();
+let casAngVel = new THREE.Vector3();
+
+// ================================================================
+// CENTER THE RIFLE
+// ================================================================
+const bbox = new THREE.Box3().setFromObject(rifleGroup);
+const center = bbox.getCenter(new THREE.Vector3());
+rifleGroup.position.sub(center);
+rifleGroup.position.y += 0.05;
+
+const rifleOrigPos = rifleGroup.position.clone();
+const rifleOrigRot = rifleGroup.rotation.clone();
+
+// ================================================================
+// LIGHTING
+// ================================================================
+// Key light - dramatic warm from upper right
+const keyLight = new THREE.SpotLight(0xffeedd, 10, 18, Math.PI / 5, 0.45, 1);
+keyLight.position.set(4.5, 4.5, 2.5);
+keyLight.castShadow = true;
+keyLight.shadow.mapSize.set(2048, 2048);
+keyLight.shadow.bias = -0.0003;
+keyLight.shadow.radius = 3;
+scene.add(keyLight);
+keyLight.target = rifleGroup;
+
+// Fill light - cool blue from left
+const fillLight = new THREE.SpotLight(0x99aacc, 3.5, 16, Math.PI / 4, 0.6, 1);
+fillLight.position.set(-4, 2.5, -1);
+scene.add(fillLight);
+fillLight.target = rifleGroup;
+
+// Rim light - bright edge light from behind
+const rimLight = new THREE.SpotLight(0xccddff, 8, 14, Math.PI / 5.5, 0.35, 1);
+rimLight.position.set(-2.5, 3.5, -5.5);
+scene.add(rimLight);
+rimLight.target = rifleGroup;
+
+// Under light
+const underLight = new THREE.PointLight(0x223344, 1.8, 8);
+underLight.position.set(0, -2, 0);
+scene.add(underLight);
+
+// Accent point lights
+const accentL = new THREE.PointLight(0xff6633, 0.5, 5);
+accentL.position.set(3, 0.5, -2);
+scene.add(accentL);
+
+const accentR = new THREE.PointLight(0x3366ff, 0.3, 5);
+accentR.position.set(-3, 0.5, 2);
+scene.add(accentR);
+
+// Ambient + hemi
+scene.add(new THREE.AmbientLight(0x1a1a22, 0.5));
+scene.add(new THREE.HemisphereLight(0x222233, 0x0a0a0e, 0.45));
+
+// ================================================================
+// ENVIRONMENT MAP
+// ================================================================
+const pmremGenerator = new THREE.PMREMGenerator(renderer);
+const envScene = new THREE.Scene();
+envScene.background = new THREE.Color(0x0c0c10);
+
+// Soft studio panels
+const panelGeo = new THREE.PlaneGeometry(6, 6);
+const panelMats = [
+  new THREE.MeshBasicMaterial({ color: 0x444455 }),
+  new THREE.MeshBasicMaterial({ color: 0x333340 }),
+  new THREE.MeshBasicMaterial({ color: 0x2a2a35 }),
+];
+const p1 = new THREE.Mesh(panelGeo, panelMats[0]);
+p1.position.set(0, 5, 0); p1.rotation.x = Math.PI / 2;
+envScene.add(p1);
+const p2 = new THREE.Mesh(panelGeo, panelMats[1]);
+p2.position.set(5, 1, 0); p2.rotation.y = -Math.PI / 2;
+envScene.add(p2);
+const p3 = new THREE.Mesh(panelGeo, panelMats[2]);
+p3.position.set(-5, 1, 0); p3.rotation.y = Math.PI / 2;
+envScene.add(p3);
+const p4 = new THREE.Mesh(panelGeo, panelMats[1]);
+p4.position.set(0, 1, -5);
+envScene.add(p4);
+
+const envMap = pmremGenerator.fromScene(envScene, 0, 0.1, 100).texture;
+scene.environment = envMap;
+pmremGenerator.dispose();
+
+// ================================================================
+// GROUND
+// ================================================================
+const shadowGround = new THREE.Mesh(
+  new THREE.PlaneGeometry(20, 20),
+  new THREE.ShadowMaterial({ opacity: 0.5 })
+);
+shadowGround.rotation.x = -Math.PI / 2;
+shadowGround.position.y = -0.52;
+shadowGround.receiveShadow = true;
+scene.add(shadowGround);
+
+const floor = new THREE.Mesh(
+  new THREE.PlaneGeometry(12, 12),
+  new THREE.MeshStandardMaterial({ color: 0x08080c, roughness: 0.75, metalness: 0.25 })
+);
+floor.rotation.x = -Math.PI / 2;
+floor.position.y = -0.53;
+floor.receiveShadow = true;
+scene.add(floor);
+
+// Subtle grid
+const gridMat = new THREE.LineBasicMaterial({ color: 0x111114, transparent: true, opacity: 0.25 });
+for (let i = -6; i <= 6; i++) {
+  const pts1 = [new THREE.Vector3(i, -0.515, -6), new THREE.Vector3(i, -0.515, 6)];
+  scene.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints(pts1), gridMat));
+  const pts2 = [new THREE.Vector3(-6, -0.515, i), new THREE.Vector3(6, -0.515, i)];
+  scene.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints(pts2), gridMat));
+}
+
+// ================================================================
+// ANIMATION STATE
+// ================================================================
+let firing = false, fireT = 0;
+const fireDur = 0.65;
+let inspect = false, inspAngle = 0;
+const defCamPos = new THREE.Vector3(2.8, 1.4, 3.8);
+const defTarget = new THREE.Vector3(0, 0, 0);
+
+// ================================================================
+// FIRE ANIMATION
+// ================================================================
+function doFire() {
+  if (firing) return;
+  firing = true; fireT = 0;
+  casing.visible = true;
+  casing.position.set(0.1, 0.1, 0.22);
+  casing.rotation.set(0, 0, 0);
+  casVel.set(2.8 + Math.random(), 3.2 + Math.random() * 0.5, 0.3 + Math.random() * 0.4);
+  casAngVel.set((Math.random()-0.5)*25, (Math.random()-0.5)*25, (Math.random()-0.5)*25);
+  document.getElementById('fov').style.opacity = '1';
+  setTimeout(() => document.getElementById('fov').style.opacity = '0', 55);
+
+  // Boost bloom briefly
+  bloomPass.strength = 0.8;
+  setTimeout(() => { bloomPass.strength = 0.25; }, 100);
+}
+
+function updateFire(dt) {
+  if (!firing) return;
+  fireT += dt;
+  const t = fireT / fireDur;
+
+  if (t > 1) {
+    firing = false; fireT = 0;
+    rifleGroup.position.copy(rifleOrigPos);
+    rifleGroup.rotation.copy(rifleOrigRot);
+    boltGroup.position.set(0, 0, 0);
+    triggerGroup.children.forEach(c => { c.rotation.x = 0; });
+    flashMeshes.forEach(m => { if (m.material) m.material.opacity = 0; });
+    smokeParts.forEach(s => { s.visible = false; s.position.copy(s.userData.basePos); s.scale.setScalar(1); });
+    casing.visible = false;
+    return;
+  }
+
+  // Recoil
+  const recoil = Math.sin(t * Math.PI) * (1 - t * 0.6);
+  rifleGroup.position.z = rifleOrigPos.z + recoil * 0.055;
+  rifleGroup.position.y = rifleOrigPos.y + recoil * 0.008;
+  rifleGroup.rotation.x = rifleOrigRot.x - recoil * 0.018;
+
+  // Bolt
+  let bolt = 0;
+  if (t < 0.12) bolt = (t / 0.12) * 0.085;
+  else if (t < 0.35) bolt = 0.085;
+  else if (t < 0.55) bolt = 0.085 * (1 - (t - 0.35) / 0.2);
+  boltGroup.position.z = bolt;
+
+  // Trigger
+  const trigRot = t < 0.08 ? (t / 0.08) * 0.14 : t > 0.45 ? 0.14 * Math.max(0, 1 - (t - 0.45) / 0.4) : 0.14;
+  triggerGroup.children.forEach(c => { c.rotation.x = trigRot; });
+
+  // Muzzle flash
+  const fi = t < 0.06 ? 1 : Math.max(0, 1 - (t - 0.06) / 0.1);
+  flashMeshes.forEach((m, i) => {
+    if (m.material) {
+      m.material.opacity = fi * (i < 3 ? 0.85 : i === 3 ? 1 : 0.6);
+    }
+  });
+  // Rotate star
+  if (starMesh) starMesh.rotation.z += dt * 18;
+  // Scale flash
+  const fs = 0.4 + fi * 1.8;
+  flashMeshes.forEach(m => m.scale.setScalar(fs));
+
+  // Smoke
+  if (t > 0.04) {
+    const st = (t - 0.04) / 0.96;
+    smokeParts.forEach((s, i) => {
+      s.visible = true;
+      const si = st * (1 + i * 0.15);
+      s.material.opacity = Math.max(0, 0.35 * (1 - si * 1.8));
+      s.position.x = s.userData.basePos.x + s.userData.drift.x * si * 0.3;
+      s.position.y = s.userData.basePos.y + s.userData.drift.y * si * 0.3;
+      s.position.z = s.userData.basePos.z + s.userData.drift.z * si * 0.3;
+      s.scale.setScalar(1 + si * 4);
+    });
+  }
+
+  // Casing
+  if (t > 0.08 && casing.visible) {
+    const ct = t - 0.08;
+    casing.position.x = 0.1 + casVel.x * ct;
+    casing.position.y = 0.1 + casVel.y * ct - 5.5 * ct * ct;
+    casing.position.z = 0.22 + casVel.z * ct;
+    casing.rotation.x += casAngVel.x * dt;
+    casing.rotation.y += casAngVel.y * dt;
+    casing.rotation.z += casAngVel.z * dt;
+    if (casing.position.y < -1.5) casing.visible = false;
+  }
+}
+
+// ================================================================
+// RENDER LOOP
+// ================================================================
+const clock = new THREE.Clock();
+let frameCount = 0;
+
+function animate() {
+  requestAnimationFrame(animate);
+  const dt = Math.min(clock.getDelta(), 0.05);
+  const elapsed = clock.elapsedTime;
+  frameCount++;
+
+  controls.update();
+
+  // Inspect mode
+  if (inspect && !firing) {
+    inspAngle += dt * 0.28;
+    const r = 3.2;
+    camera.position.x = Math.cos(inspAngle) * r;
+    camera.position.z = Math.sin(inspAngle) * r;
+    camera.position.y = 0.8 + Math.sin(inspAngle * 0.4) * 0.6;
+    camera.lookAt(controls.target);
+  }
+
+  // Idle float
+  if (!firing) {
+    rifleGroup.position.y = rifleOrigPos.y + Math.sin(elapsed * 0.7) * 0.006;
+    rifleGroup.rotation.y = rifleOrigRot.y + Math.sin(elapsed * 0.3) * 0.003;
+  }
+
+  updateFire(dt);
+  composer.render();
+
+  // Stats
+  if (frameCount % 30 === 0) {
+    document.getElementById('stats').textContent = `${Math.round(1/dt)} FPS`;
+  }
+}
+
+// ================================================================
+// EVENT HANDLERS
+// ================================================================
+document.getElementById('bf').addEventListener('click', doFire);
+
+const biBtn = document.getElementById('bi');
+biBtn.addEventListener('click', () => {
+  inspect = !inspect;
+  biBtn.classList.toggle('on', inspect);
+  biBtn.textContent = inspect ? '● Inspecting' : 'Inspect Mode';
+  if (inspect) inspAngle = Math.atan2(camera.position.z, camera.position.x);
+});
+
+document.getElementById('br').addEventListener('click', resetView);
+
+function resetView() {
+  inspect = false;
+  biBtn.classList.remove('on');
+  biBtn.textContent = 'Inspect Mode';
+  const sp = camera.position.clone();
+  const st = controls.target.clone();
+  const dur = 900;
+  const t0 = performance.now();
+  (function anim(now) {
+    const p = Math.min((now - t0) / dur, 1);
+    const e = 1 - Math.pow(1 - p, 3);
+    camera.position.lerpVectors(sp, defCamPos, e);
+    controls.target.lerpVectors(st, defTarget, e);
+    if (p < 1) requestAnimationFrame(anim);
+  })(performance.now());
+}
+
+document.addEventListener('keydown', (e) => {
+  if (e.code === 'Space') { e.preventDefault(); doFire(); }
+  if (e.code === 'KeyR') resetView();
+  if (e.code === 'KeyI') biBtn.click();
+});
+
+window.addEventListener('resize', () => {
+  camera.aspect = window.innerWidth / window.innerHeight;
+  camera.updateProjectionMatrix();
+  renderer.setSize(window.innerWidth, window.innerHeight);
+  composer.setSize(window.innerWidth, window.innerHeight);
+  fxaaPass.uniforms['resolution'].value.set(1 / window.innerWidth, 1 / window.innerHeight);
+});
+
+// Loading
+setTimeout(() => {
+  document.getElementById('ld').classList.add('h');
+  setTimeout(() => document.getElementById('ld').remove(), 1200);
+}, 1000);
+
+animate();
+
+</script>
+</body>
+</html>

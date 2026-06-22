@@ -148,6 +148,7 @@
   </div>
   <div class="spacer"></div>
   <div class="tgroup">
+    <button class="tb" id="btnWeaponForge" title="Open the weapon model editor">WEAPON FORGE</button>
     <button class="tb" id="btnUndo" title="Ctrl+Z">UNDO</button>
     <button class="tb warn" id="btnNew">NEW</button>
     <button class="tb" id="btnSave">SAVE .JSON</button>
@@ -226,12 +227,17 @@
 <div id="toast"></div>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script src="gunshtml/weapon-model-catalog.js"></script>
 <script>
 /* ============================================================
    DEAD GAME — FORGE  ·  level editor for game.html
    Mirrors the game's kit (r128, same materials & dimensions)
    ============================================================ */
 "use strict";
+
+document.getElementById('btnWeaponForge').addEventListener('click', () => {
+  window.location.href = 'weapon_forge.html';
+});
 
 const WALL_H = 4.8, WALL_T = 0.6, ARENA_RADIUS = 60;
 
@@ -465,7 +471,74 @@ function makeLabel(text, color, width){
    ============================================================ */
 const N = v => +(+v).toFixed(2);
 const MAT_NAMES = ['wall','trim','plank','crate','steel','rust','dark','roof','concrete','glass','rock','dirt','grass'];
-const WEAPON_IDS = ['smg','shotgun','revolver','carbine','rifle','lmg'];
+const BASE_WEAPON_IDS = ['smg','shotgun','revolver','carbine','rifle','lmg'];
+const WEAPON_IDS = [...BASE_WEAPON_IDS];
+const WEAPON_LABELS = {
+  smg:'MILL SMG', shotgun:'TRENCH SHOTGUN', revolver:'RUST REVOLVER',
+  carbine:'HUNTING CARBINE', rifle:'SERVICE RIFLE', lmg:'BELT FED'
+};
+function forgeWeaponCatalogId(filename){
+  return 'forge_' + String(filename || '').replace(/\.json$/i, '').toLowerCase()
+    .replace(/[^a-z0-9]+/g, '_').replace(/^_+|_+$/g, '');
+}
+function registerForgeWeaponOption(entry){
+  if(!entry || !entry.filename) return;
+  const id = entry.catalogId || forgeWeaponCatalogId(entry.filename);
+  if(!id || WEAPON_IDS.includes(id)) return;
+  WEAPON_IDS.push(id);
+  WEAPON_LABELS[id] = (entry.name || entry.filename.replace(/\.json$/i, '')) +
+    (entry.gameReady === false ? ' [NOT NORMALIZED]' : ' [FORGE]');
+}
+(window.DEAD_GAME_SOURCE_WEAPON_FILES || []).forEach(registerForgeWeaponOption);
+function weaponOptionLabel(id){ return WEAPON_LABELS[id] || String(id || 'WEAPON').toUpperCase(); }
+function syncForgeWeaponSelects(){
+  document.querySelectorAll('select[data-p="weapon"]').forEach(select => {
+    const value = select.value;
+    select.replaceChildren();
+    for(const id of WEAPON_IDS){
+      const option = document.createElement('option');
+      option.value = id;
+      option.textContent = weaponOptionLabel(id);
+      option.selected = id === value;
+      select.appendChild(option);
+    }
+  });
+}
+async function refreshForgeWeaponOptions(){
+  if(location.protocol === 'file:') return;
+  try{
+    const response = await fetch(`gunshtml/?cacheBust=${Date.now()}`, {cache:'no-store'});
+    if(!response.ok) return;
+    const index = new DOMParser().parseFromString(await response.text(), 'text/html');
+    const filenames = Array.from(index.querySelectorAll('a[href]'))
+      .map(anchor => {
+        try{ return decodeURIComponent(new URL(anchor.getAttribute('href'), response.url).pathname.split('/').pop()); }
+        catch(e){ return ''; }
+      })
+      .filter(filename => /\.json$/i.test(filename));
+    let changed = false;
+    for(const filename of new Set(filenames)){
+      const id = forgeWeaponCatalogId(filename);
+      if(WEAPON_IDS.includes(id)) continue;
+      let entry = {filename, catalogId:id, name:filename.replace(/\.json$/i, '')};
+      try{
+        const projectResponse = await fetch(`gunshtml/${encodeURIComponent(filename)}?cacheBust=${Date.now()}`, {cache:'no-store'});
+        if(projectResponse.ok){
+          const project = await projectResponse.json();
+          const userData = project.object && project.object.userData || {};
+          entry.name = userData.forgeProjectName || entry.name;
+          entry.weaponId = userData.forgeWeaponId || null;
+          entry.gameReady = userData.forgeGameReady === true;
+        }
+      }catch(e){}
+      registerForgeWeaponOption(entry);
+      changed = true;
+    }
+    if(changed) syncForgeWeaponSelects();
+  }catch(e){}
+}
+refreshForgeWeaponOptions();
+setInterval(refreshForgeWeaponOptions, 4000);
 const PERK_IDS = ['reload','speed','health','headshot','regen'];
 const PERK_PREVIEW = {
   reload:   {short:'QUICK HANDS', desc:'FASTER RELOAD', color:'e7b53a', cost:1500},
@@ -2872,7 +2945,7 @@ const KIT = {
         peg.position.set(px, 1.56, 0.2);
         grp.add(peg);
       }
-      const label = makeLabel((p.weapon||'WEAPON').toUpperCase(), '#ffd27a', 3.7);
+      const label = makeLabel(weaponOptionLabel(p.weapon), '#ffd27a', 3.7);
       label.position.y = 2.55;
       grp.add(label);
       return grp; },
@@ -4348,7 +4421,11 @@ function paramRows(def, vals){
         <input type="text" data-p="${p.k}" value="${vals[p.k]}"></div>`;
     } else if(p.type === 'select'){
       html += `<div class="row"><label>${p.label}</label><select data-p="${p.k}">
-        ${p.opts.map(op => `<option ${op===vals[p.k]?'selected':''}>${op}</option>`).join('')}
+        ${p.opts.map(op => {
+          const value = typeof op === 'object' ? op.value : op;
+          const label = typeof op === 'object' ? op.label : (p.k === 'weapon' ? weaponOptionLabel(op) : op);
+          return `<option value="${value}" ${value===vals[p.k]?'selected':''}>${label}</option>`;
+        }).join('')}
         </select></div>`;
     } else {
       html += `<div class="row"><label>${p.label}</label>

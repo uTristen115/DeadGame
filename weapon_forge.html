@@ -1,0 +1,2255 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>DEAD GAME — WEAPON FORGE</title>
+  <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+  <style>
+    :root {
+      --bg0: #05070b;
+      --bg1: #0b1017;
+      --bg2: #121923;
+      --panel: rgba(12, 16, 24, 0.72);
+      --line: rgba(255,255,255,0.12);
+      --text: #e8edf3;
+      --muted: #94a3b8;
+      --accent: #7dd3fc;
+      --accent2: #c084fc;
+      --warn: #fbbf24;
+    }
+
+    * { box-sizing: border-box; }
+    html, body {
+      width: 100%;
+      height: 100%;
+      margin: 0;
+      overflow: hidden;
+      background:
+        radial-gradient(circle at 20% 20%, rgba(80,110,180,0.08), transparent 32%),
+        radial-gradient(circle at 80% 30%, rgba(190,120,255,0.06), transparent 28%),
+        radial-gradient(circle at 50% 80%, rgba(255,255,255,0.03), transparent 30%),
+        linear-gradient(180deg, var(--bg1), var(--bg0) 45%, #030406 100%);
+      color: var(--text);
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    }
+
+    #app {
+      position: relative;
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
+    }
+
+    #scene {
+      position: absolute;
+      inset: 0;
+    }
+
+    canvas {
+      display: block;
+      width: 100%;
+      height: 100%;
+      cursor: grab;
+    }
+    canvas:active { cursor: grabbing; }
+
+    .vignette,
+    .scanlines,
+    .glow-overlay {
+      position: absolute;
+      inset: 0;
+      pointer-events: none;
+    }
+
+    .vignette {
+      background: radial-gradient(circle at 50% 40%, transparent 35%, rgba(0,0,0,0.2) 60%, rgba(0,0,0,0.6) 100%);
+      mix-blend-mode: multiply;
+    }
+
+    .scanlines {
+      opacity: 0.08;
+      background-image: linear-gradient(to bottom, rgba(255,255,255,0.08) 1px, transparent 1px);
+      background-size: 100% 4px;
+    }
+
+    .glow-overlay {
+      background:
+        radial-gradient(circle at 65% 28%, rgba(125, 211, 252, 0.08), transparent 20%),
+        radial-gradient(circle at 25% 70%, rgba(192, 132, 252, 0.05), transparent 22%);
+      mix-blend-mode: screen;
+    }
+
+    .hud {
+      position: absolute;
+      inset: 0;
+      pointer-events: none;
+    }
+
+    .panel {
+      pointer-events: auto;
+      background: var(--panel);
+      backdrop-filter: blur(16px) saturate(130%);
+      -webkit-backdrop-filter: blur(16px) saturate(130%);
+      border: 1px solid var(--line);
+      box-shadow:
+        0 12px 40px rgba(0,0,0,0.35),
+        inset 0 1px 0 rgba(255,255,255,0.06);
+    }
+
+    .chip {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.45rem;
+      padding: 0.35rem 0.6rem;
+      border-radius: 999px;
+      border: 1px solid rgba(255,255,255,0.1);
+      background: rgba(255,255,255,0.04);
+      color: #dbe4ef;
+      font-size: 0.74rem;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+    }
+
+    .btn {
+      position: relative;
+      overflow: hidden;
+      border: 1px solid rgba(255,255,255,0.13);
+      background: linear-gradient(180deg, rgba(255,255,255,0.10), rgba(255,255,255,0.04));
+      color: #eef3f8;
+      transition: transform 180ms ease, border-color 180ms ease, background 180ms ease, box-shadow 180ms ease;
+      box-shadow: 0 6px 20px rgba(0,0,0,0.22), inset 0 1px 0 rgba(255,255,255,0.05);
+    }
+    .btn:hover {
+      transform: translateY(-1px);
+      border-color: rgba(125,211,252,0.45);
+      background: linear-gradient(180deg, rgba(125,211,252,0.16), rgba(255,255,255,0.05));
+      box-shadow: 0 10px 28px rgba(0,0,0,0.28), 0 0 0 1px rgba(125,211,252,0.08) inset;
+    }
+    .btn:active { transform: translateY(0); }
+    .btn.primary {
+      border-color: rgba(251,191,36,0.34);
+      background: linear-gradient(180deg, rgba(251,191,36,0.28), rgba(245,158,11,0.10));
+      color: #fff8e6;
+    }
+    .btn.primary:hover {
+      border-color: rgba(251,191,36,0.55);
+      background: linear-gradient(180deg, rgba(251,191,36,0.35), rgba(245,158,11,0.12));
+    }
+
+    .reticle {
+      position: absolute;
+      left: 50%;
+      top: 50%;
+      width: 110px;
+      height: 110px;
+      transform: translate(-50%, -50%);
+      opacity: 0.18;
+      pointer-events: none;
+      transition: opacity 180ms ease, transform 180ms ease;
+    }
+    .reticle.active {
+      opacity: 0.4;
+      transform: translate(-50%, -50%) scale(1.04);
+    }
+
+    .reticle::before,
+    .reticle::after,
+    .reticle span::before,
+    .reticle span::after {
+      content: "";
+      position: absolute;
+      background: linear-gradient(90deg, transparent, rgba(125,211,252,0.95), transparent);
+      box-shadow: 0 0 18px rgba(125,211,252,0.15);
+    }
+
+    .reticle::before { left: 50%; top: 0; width: 1px; height: 24px; transform: translateX(-50%); }
+    .reticle::after { left: 50%; bottom: 0; width: 1px; height: 24px; transform: translateX(-50%); }
+    .reticle span::before { top: 50%; left: 0; width: 24px; height: 1px; transform: translateY(-50%); }
+    .reticle span::after { top: 50%; right: 0; width: 24px; height: 1px; transform: translateY(-50%); }
+
+    .reticle .ring {
+      position: absolute;
+      inset: 18px;
+      border: 1px solid rgba(125,211,252,0.32);
+      border-radius: 50%;
+      box-shadow: inset 0 0 18px rgba(125,211,252,0.06), 0 0 24px rgba(125,211,252,0.04);
+    }
+
+    .title-glow {
+      text-shadow: 0 0 26px rgba(125,211,252,0.18);
+    }
+
+    .stat-bar {
+      height: 6px;
+      border-radius: 999px;
+      background: rgba(255,255,255,0.08);
+      overflow: hidden;
+    }
+    .stat-bar > i {
+      display: block;
+      height: 100%;
+      border-radius: inherit;
+      background: linear-gradient(90deg, rgba(125,211,252,0.9), rgba(192,132,252,0.85));
+      box-shadow: 0 0 14px rgba(125,211,252,0.22);
+    }
+
+    @media (max-width: 900px) {
+      .desktop-only { display: none; }
+    }
+
+    :root { --topbar-h: 58px; --left-w: 255px; --right-w: 300px; }
+    .hud, .vignette, .scanlines, .glow-overlay, #reticle { display: none !important; }
+    #scene {
+      position: absolute;
+      left: var(--left-w);
+      right: var(--right-w);
+      top: var(--topbar-h);
+      bottom: 28px;
+      overflow: hidden;
+      background:
+        radial-gradient(circle at 50% 40%, rgba(78, 103, 135, 0.22), transparent 48%),
+        linear-gradient(180deg, #1a2330 0%, #111923 56%, #0b1119 100%);
+    }
+    .editor-panel {
+      background: rgba(8, 12, 18, 0.95);
+      border-color: rgba(255,255,255,0.1);
+      box-shadow: 0 18px 50px rgba(0,0,0,0.3);
+    }
+    .topbar {
+      position: absolute; z-index: 20; inset: 0 0 auto 0; height: var(--topbar-h);
+      display: flex; align-items: center; gap: 10px; padding: 0 14px;
+      border-bottom: 1px solid rgba(255,255,255,0.1);
+      overflow-x:auto;overflow-y:hidden;
+    }
+    .brand { display:flex;align-items:center;min-width:222px;gap:10px;font-weight:700;letter-spacing:.04em; }
+    .brand-mark {
+      display:grid;width:30px;height:30px;place-items:center;border-radius:9px;color:#061018;
+      background:linear-gradient(135deg,#7dd3fc,#c084fc);box-shadow:0 0 24px rgba(125,211,252,.2);
+    }
+    .toolbar-group { display:flex;align-items:center;gap:6px;padding-right:10px;border-right:1px solid rgba(255,255,255,.1);flex:0 0 auto; }
+    .tool-btn {
+      border:1px solid rgba(255,255,255,.1);background:rgba(255,255,255,.045);color:#dce7f2;
+      border-radius:8px;padding:7px 10px;font-size:12px;cursor:pointer;white-space:nowrap;
+      display:inline-flex;align-items:center;text-decoration:none;
+    }
+    .tool-btn:hover { background:rgba(125,211,252,.1);border-color:rgba(125,211,252,.35); }
+    .tool-btn.active { background:rgba(125,211,252,.17);border-color:rgba(125,211,252,.65);color:white; }
+    .tool-btn.danger:hover { background:rgba(248,113,113,.12);border-color:rgba(248,113,113,.5); }
+    .weapon-picker {
+      min-width:170px;border:1px solid rgba(125,211,252,.32);background:#111923;color:#e8edf3;
+      border-radius:8px;padding:7px 28px 7px 9px;font-size:12px;outline:none;
+    }
+    .weapon-picker:focus { border-color:rgba(125,211,252,.72); }
+    .leftbar,.rightbar {
+      position:absolute;z-index:15;top:var(--topbar-h);bottom:0;overflow:hidden;
+      display:flex;flex-direction:column;
+    }
+    .leftbar { left:0;width:var(--left-w);border-right:1px solid rgba(255,255,255,.1); }
+    .rightbar { right:0;width:var(--right-w);border-left:1px solid rgba(255,255,255,.1);overflow-y:auto; }
+    .panel-head {
+      padding:14px 14px 10px;display:flex;align-items:center;justify-content:space-between;
+      font-size:12px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:#cbd5e1;
+    }
+    .search {
+      margin:0 12px 10px;width:calc(100% - 24px);border:1px solid rgba(255,255,255,.1);
+      background:rgba(255,255,255,.04);color:white;border-radius:8px;padding:8px 10px;outline:none;font-size:12px;
+    }
+    #partsList { overflow-y:auto;padding:0 8px 14px; }
+    .part-row {
+      display:flex;align-items:center;gap:8px;width:100%;padding:7px 9px;margin:1px 0;
+      border:1px solid transparent;border-radius:7px;background:transparent;color:#aebccc;
+      text-align:left;font-size:12px;cursor:pointer;
+    }
+    .part-row:hover { background:rgba(255,255,255,.045);color:white; }
+    .part-row.active { color:white;background:rgba(125,211,252,.12);border-color:rgba(125,211,252,.28); }
+    .part-dot { width:7px;height:7px;border-radius:2px;background:#64748b;flex:0 0 auto; }
+    .section { padding:0 14px 16px;border-bottom:1px solid rgba(255,255,255,.08); }
+    .section-title { margin:13px 0 9px;color:#94a3b8;font-size:11px;font-weight:700;letter-spacing:.08em;text-transform:uppercase; }
+    .axis-grid { display:grid;grid-template-columns:22px repeat(3,1fr);align-items:center;gap:5px;margin-bottom:6px; }
+    .axis-grid label { font-size:10px;color:#64748b;text-transform:uppercase; }
+    .axis-grid input,.name-input,.color-input {
+      width:100%;min-width:0;border:1px solid rgba(255,255,255,.1);background:rgba(255,255,255,.045);
+      color:white;border-radius:6px;padding:7px 6px;font-size:11px;outline:none;
+    }
+    .axis-x { color:#fb7185 !important; }.axis-y { color:#4ade80 !important; }.axis-z { color:#60a5fa !important; }
+    .button-grid { display:grid;grid-template-columns:1fr 1fr;gap:7px; }
+    .statusbar {
+      position:absolute;z-index:18;left:var(--left-w);right:var(--right-w);bottom:0;height:28px;
+      display:flex;align-items:center;justify-content:space-between;padding:0 10px;
+      border-top:1px solid rgba(255,255,255,.08);color:#718096;font-size:10px;
+    }
+    canvas { outline:none; }
+    @media (max-width:980px) {
+      :root { --left-w:190px;--right-w:250px; }
+      .brand { min-width:160px; }.toolbar-label { display:none; }
+    }
+  </style>
+</head>
+<body>
+  <div id="app">
+    <div id="scene"></div>
+
+    <div class="vignette"></div>
+    <div class="scanlines"></div>
+    <div class="glow-overlay"></div>
+
+    <div id="reticle" class="reticle"><span></span><div class="ring"></div></div>
+
+    <div class="hud">
+      <div class="absolute left-4 top-4 md:left-6 md:top-6 max-w-sm panel rounded-2xl p-4 md:p-5">
+        <div class="flex items-center gap-2 mb-3">
+          <span class="chip">Fictional Art Asset</span>
+          <span class="chip desktop-only">Three.js Studio Render</span>
+        </div>
+        <h1 class="title-glow text-xl md:text-2xl font-semibold tracking-wide">M4-Inspired Visual Showcase</h1>
+        <p class="mt-2 text-sm leading-relaxed text-slate-300">
+          A cinematic, non-functional exterior-only 3D concept model. This scene is designed purely as interactive visual art and avoids real-world specifications, internal layouts, and build guidance.
+        </p>
+
+        <div class="mt-4 grid grid-cols-1 gap-3 text-xs text-slate-300">
+          <div>
+            <div class="flex justify-between mb-1"><span>Finish</span><span class="text-slate-400">Matte black / gunmetal</span></div>
+            <div class="stat-bar"><i style="width:92%"></i></div>
+          </div>
+          <div>
+            <div class="flex justify-between mb-1"><span>Exterior detail</span><span class="text-slate-400">High</span></div>
+            <div class="stat-bar"><i style="width:95%"></i></div>
+          </div>
+          <div>
+            <div class="flex justify-between mb-1"><span>Cinematic lighting</span><span class="text-slate-400">Studio</span></div>
+            <div class="stat-bar"><i style="width:90%"></i></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="absolute right-4 top-4 md:right-6 md:top-6 w-[300px] max-w-[calc(100vw-2rem)] panel rounded-2xl p-4 md:p-5">
+        <div class="text-sm font-medium tracking-wide text-slate-100">Controls</div>
+        <ul class="mt-3 space-y-2 text-sm text-slate-300 leading-relaxed">
+          <li><span class="text-slate-100">Drag</span> to orbit camera</li>
+          <li><span class="text-slate-100">Scroll</span> to zoom</li>
+          <li><span class="text-slate-100">Space</span> or <span class="text-slate-100">Fire</span> to trigger the stylized animation</li>
+          <li><span class="text-slate-100">Reset View</span> to restore the showcase angle</li>
+          <li><span class="text-slate-100">Inspect Mode</span> for slow presentation rotation</li>
+        </ul>
+        <div class="mt-4 rounded-xl border border-white/10 bg-white/5 p-3 text-xs text-slate-400">
+          Decorative visual effects only: recoil, trigger motion, bolt-like movement, flash, smoke, and optional casing are stylized animation elements, not mechanical references.
+        </div>
+      </div>
+
+      <div class="absolute left-1/2 bottom-4 md:bottom-6 -translate-x-1/2 panel rounded-2xl p-2 md:p-3 flex items-center gap-2 md:gap-3 pointer-events-auto">
+        <button id="fireBtn" class="btn primary rounded-xl px-4 py-2 text-sm font-medium">Fire</button>
+        <button id="resetBtn" class="btn rounded-xl px-4 py-2 text-sm font-medium">Reset View</button>
+        <label class="btn rounded-xl px-3 py-2 text-sm font-medium inline-flex items-center gap-2 cursor-pointer select-none">
+          <input id="inspectToggle" type="checkbox" class="accent-sky-400" />
+          Inspect Mode
+        </label>
+      </div>
+
+      <div class="absolute left-4 bottom-4 md:left-6 md:bottom-6 panel rounded-2xl px-4 py-3 text-xs md:text-sm text-slate-300">
+        <div class="font-medium text-slate-100">Presentation Notes</div>
+        <div class="mt-1">Dark studio backdrop · rim-lit silhouette · procedural geometry · premium inspection-screen styling</div>
+      </div>
+    </div>
+  </div>
+
+  <header class="topbar editor-panel">
+    <div class="brand"><span class="brand-mark">F</span><span>DEAD GAME <small style="font-weight:400;color:#64748b">WEAPON FORGE</small></span></div>
+    <div class="toolbar-group">
+      <a class="tool-btn" href="forge_3_1.html">Map Forge</a>
+    </div>
+    <div class="toolbar-group">
+      <select id="existingWeaponSelect" class="weapon-picker" aria-label="Existing weapon">
+        <optgroup label="Weapons used in game">
+          <option value="game:pistol">1 — Field Pistol</option>
+          <option value="game:smg">2 — Mill SMG</option>
+          <option value="game:shotgun">3 — Trench Shotgun</option>
+          <option value="game:revolver">4 — Rust Revolver</option>
+          <option value="game:carbine">5 — Hunting Carbine</option>
+          <option value="game:rifle" selected>6 — Service Rifle</option>
+          <option value="game:lmg">7 — Belt Fed</option>
+        </optgroup>
+        <optgroup id="sourceWeaponOptions" label="Source models in gunshtml"></optgroup>
+      </select>
+      <button id="loadExistingWeaponBtn" class="tool-btn active">Load Weapon</button>
+      <button id="refreshWeaponFolderBtn" class="tool-btn" title="Scan gunshtml for newly added JSON models">Refresh Folder</button>
+      <button id="normalizeForGameBtn" class="tool-btn" title="Match this model to the selected in-game weapon size">Normalize for Game</button>
+    </div>
+    <div class="toolbar-group">
+      <button id="translateBtn" class="tool-btn active" title="Move (W)">↔ <span class="toolbar-label">Move</span></button>
+      <button id="rotateBtn" class="tool-btn" title="Rotate (E)">⟳ <span class="toolbar-label">Rotate</span></button>
+      <button id="scaleBtn" class="tool-btn" title="Scale (R)">⤢ <span class="toolbar-label">Scale</span></button>
+    </div>
+    <div class="toolbar-group">
+      <button id="undoBtn" class="tool-btn" title="Undo (Ctrl+Z)">Undo</button>
+      <button id="redoBtn" class="tool-btn" title="Redo (Ctrl+Y)">Redo</button>
+    </div>
+    <div class="toolbar-group">
+      <button id="editorResetBtn" class="tool-btn">Frame Model</button>
+      <button id="editorFireBtn" class="tool-btn">Preview Fire</button>
+    </div>
+    <div style="margin-left:auto;display:flex;gap:6px">
+      <button id="newBtn" class="tool-btn">New Blank</button>
+      <button id="loadBtn" class="tool-btn">Open Project</button>
+      <button id="importHtmlBtn" class="tool-btn">Import HTML</button>
+      <button id="saveBtn" class="tool-btn">Save Project</button>
+      <button id="exportBtn" class="tool-btn active">Export GLB</button>
+      <input id="fileInput" type="file" accept=".json,application/json" hidden />
+      <input id="htmlFileInput" type="file" accept=".html,.htm,text/html" hidden />
+    </div>
+  </header>
+
+  <aside class="leftbar editor-panel">
+    <div class="panel-head"><span>Scene Parts</span><span id="partCount">0</span></div>
+    <input id="partSearch" class="search" placeholder="Search parts..." />
+    <div id="partsList"></div>
+  </aside>
+
+  <aside class="rightbar editor-panel">
+    <div class="panel-head"><span>Inspector</span><span id="selectionType">None</span></div>
+    <section class="section">
+      <div class="section-title">Selected part</div>
+      <input id="nameInput" class="name-input" value="Nothing selected" disabled />
+    </section>
+    <section class="section">
+      <div class="section-title">Transform</div>
+      <div class="axis-grid"><label>Pos</label><input id="px" type="number" step="0.01"><input id="py" type="number" step="0.01"><input id="pz" type="number" step="0.01"></div>
+      <div class="axis-grid"><label>Rot</label><input id="rx" type="number" step="1"><input id="ry" type="number" step="1"><input id="rz" type="number" step="1"></div>
+      <div class="axis-grid"><label>Scl</label><input id="sx" type="number" step="0.01"><input id="sy" type="number" step="0.01"><input id="sz" type="number" step="0.01"></div>
+      <div class="axis-grid" style="margin-top:-2px"><span></span><label class="axis-x">X</label><label class="axis-y">Y</label><label class="axis-z">Z</label></div>
+    </section>
+    <section class="section">
+      <div class="section-title">Appearance</div>
+      <div style="display:grid;grid-template-columns:1fr 58px;gap:8px">
+        <button id="visibilityBtn" class="tool-btn">Toggle Visibility</button>
+        <input id="colorInput" class="color-input" type="color" value="#333840" title="Part color" />
+      </div>
+    </section>
+    <section class="section">
+      <div class="section-title">Create & edit</div>
+      <div class="button-grid">
+        <button id="addBoxBtn" class="tool-btn">+ Box</button>
+        <button id="addCylinderBtn" class="tool-btn">+ Cylinder</button>
+        <button id="duplicateBtn" class="tool-btn">Duplicate</button>
+        <button id="deleteBtn" class="tool-btn danger">Delete</button>
+      </div>
+    </section>
+    <section class="section">
+      <div class="section-title">Quick help</div>
+      <div style="font-size:11px;line-height:1.7;color:#8291a3">
+        Click a part to select it. Drag the colored gizmo to edit.<br><br>
+        <b style="color:#cbd5e1">W</b> move · <b style="color:#cbd5e1">E</b> rotate · <b style="color:#cbd5e1">R</b> scale · <b style="color:#cbd5e1">Del</b> delete
+      </div>
+    </section>
+  </aside>
+
+  <footer class="statusbar editor-panel">
+    <span id="statusText">Ready — click a model part to begin</span>
+    <span>Orbit: drag empty space · Zoom: wheel</span>
+  </footer>
+
+  <script src="gunshtml/weapon-model-catalog.js"></script>
+  <script type="importmap">
+    {
+      "imports": {
+        "three": "https://unpkg.com/three@0.160.0/build/three.module.js",
+        "three/addons/": "https://unpkg.com/three@0.160.0/examples/jsm/"
+      }
+    }
+  </script>
+  <script type="module">
+    import * as THREE from 'three';
+    import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+    import { TransformControls } from 'three/addons/controls/TransformControls.js';
+    import { GLTFExporter } from 'three/addons/exporters/GLTFExporter.js';
+
+    const sceneHost = document.getElementById('scene');
+    const fireBtn = document.getElementById('fireBtn');
+    const resetBtn = document.getElementById('resetBtn');
+    const inspectToggle = document.getElementById('inspectToggle');
+    const reticle = document.getElementById('reticle');
+
+    const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+    renderer.setSize(sceneHost.clientWidth, sceneHost.clientHeight);
+    renderer.outputColorSpace = THREE.SRGBColorSpace;
+    renderer.shadowMap.enabled = true;
+    renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+    renderer.toneMapping = THREE.ACESFilmicToneMapping;
+    renderer.toneMappingExposure = 1.65;
+    sceneHost.appendChild(renderer.domElement);
+
+    const scene = new THREE.Scene();
+    scene.fog = new THREE.FogExp2(0x182230, 0.025);
+
+    const camera = new THREE.PerspectiveCamera(42, sceneHost.clientWidth / sceneHost.clientHeight, 0.1, 100);
+    camera.position.set(4.8, 1.7, 6.2);
+
+    const controls = new OrbitControls(camera, renderer.domElement);
+    controls.enableDamping = true;
+    controls.dampingFactor = 0.06;
+    controls.enablePan = true;
+    controls.zoomSpeed = 1.35;
+    controls.zoomToCursor = true;
+    controls.minDistance = 0.04;
+    controls.maxDistance = 80;
+    controls.target.set(0.15, 0.8, 0);
+    controls.maxPolarAngle = Math.PI * 0.72;
+    controls.minPolarAngle = Math.PI * 0.25;
+
+    const transformControls = new TransformControls(camera, renderer.domElement);
+    scene.add(transformControls);
+    transformControls.setMode('translate');
+    transformControls.addEventListener('dragging-changed', (event) => {
+      controls.enabled = !event.value;
+    });
+
+    const defaultCameraPos = new THREE.Vector3(4.8, 1.7, 6.2);
+    const defaultTarget = new THREE.Vector3(0.15, 0.8, 0);
+
+    const world = new THREE.Group();
+    scene.add(world);
+
+    const rifleRig = new THREE.Group();
+    rifleRig.position.set(0, 0.9, 0);
+    rifleRig.rotation.z = -0.06;
+    world.add(rifleRig);
+
+    const rifle = new THREE.Group();
+    rifleRig.add(rifle);
+
+    const movingParts = {
+      trigger: null,
+      bolt: null,
+      mag: null,
+      muzzleFlash: null,
+      smoke: [],
+      casing: null,
+      casingTrail: null,
+      recoilGroup: new THREE.Group(),
+    };
+    movingParts.recoilGroup.name = 'Rifle';
+    rifle.add(movingParts.recoilGroup);
+
+    function makeMat(color, metalness, roughness, emissive = 0x000000, emissiveIntensity = 0) {
+      return new THREE.MeshStandardMaterial({
+        color,
+        metalness,
+        roughness,
+        emissive,
+        emissiveIntensity
+      });
+    }
+
+    const materials = {
+      black: makeMat(0x161a1f, 0.72, 0.48),
+      dark: makeMat(0x101418, 0.8, 0.4),
+      gunmetal: makeMat(0x2b3138, 0.9, 0.32),
+      graphite: makeMat(0x20262c, 0.85, 0.45),
+      rubber: makeMat(0x111315, 0.2, 0.88),
+      accent: makeMat(0x59636e, 0.95, 0.24),
+      brass: makeMat(0xc79b47, 0.95, 0.28),
+      flash: new THREE.MeshBasicMaterial({ color: 0xffd38a, transparent: true, opacity: 0 }),
+      smoke: new THREE.MeshBasicMaterial({ color: 0xb8c2cc, transparent: true, opacity: 0, depthWrite: false }),
+      redDot: new THREE.MeshBasicMaterial({ color: 0xff4d5a, transparent: true, opacity: 0.85 }),
+      glass: new THREE.MeshPhysicalMaterial({
+        color: 0x9cc9ff,
+        metalness: 0,
+        roughness: 0.05,
+        transparent: true,
+        opacity: 0.16,
+        transmission: 0.9,
+        thickness: 0.15,
+        clearcoat: 1,
+        clearcoatRoughness: 0.08
+      })
+    };
+
+    let partSerial = 1;
+
+    function addMesh(parent, geo, mat, pos = [0,0,0], rot = [0,0,0], cast = true, receive = true) {
+      const mesh = new THREE.Mesh(geo, mat);
+      const typeName = geo.type.replace('Geometry', '').replace(/([a-z])([A-Z])/g, '$1 $2');
+      mesh.name = `${parent.name ? `${parent.name} ` : ''}${typeName} ${partSerial++}`;
+      mesh.userData.editorPart = true;
+      mesh.position.set(...pos);
+      mesh.rotation.set(...rot);
+      mesh.castShadow = cast;
+      mesh.receiveShadow = receive;
+      parent.add(mesh);
+      return mesh;
+    }
+
+    function roundedBox(w, h, d, r = 0.04) {
+      return new THREE.BoxGeometry(w, h, d, 4, 4, 4);
+    }
+
+    function cylinderX(radiusTop, radiusBottom, length, radial = 20) {
+      const g = new THREE.CylinderGeometry(radiusTop, radiusBottom, length, radial, 1, false);
+      g.rotateZ(Math.PI / 2);
+      return g;
+    }
+
+    function cylinderY(radiusTop, radiusBottom, length, radial = 20) {
+      return new THREE.CylinderGeometry(radiusTop, radiusBottom, length, radial, 1, false);
+    }
+
+    function capsuleX(radius, length, radial = 14, cap = 8) {
+      const g = new THREE.CapsuleGeometry(radius, length, cap, radial);
+      g.rotateZ(Math.PI / 2);
+      return g;
+    }
+
+    function makeMagazineGeometry() {
+      const shape = new THREE.Shape();
+      shape.moveTo(-0.22, 0.7);
+      shape.quadraticCurveTo(-0.24, 0.25, -0.18, -0.4);
+      shape.quadraticCurveTo(-0.1, -1.12, 0.24, -1.55);
+      shape.quadraticCurveTo(0.34, -1.66, 0.42, -1.68);
+      shape.lineTo(0.34, -1.82);
+      shape.quadraticCurveTo(-0.03, -1.78, -0.26, -1.44);
+      shape.quadraticCurveTo(-0.58, -0.97, -0.6, -0.35);
+      shape.quadraticCurveTo(-0.62, 0.28, -0.52, 0.76);
+      shape.closePath();
+      const geo = new THREE.ExtrudeGeometry(shape, {
+        depth: 0.68,
+        bevelEnabled: true,
+        bevelSegments: 3,
+        steps: 1,
+        bevelSize: 0.03,
+        bevelThickness: 0.03,
+        curveSegments: 24
+      });
+      geo.center();
+      // Keep the curved profile in the rifle's X/Y plane and point the
+      // magazine's lower sweep toward the muzzle (negative local X).
+      geo.rotateY(Math.PI);
+      return geo;
+    }
+
+    function makeGripGeometry() {
+      const shape = new THREE.Shape();
+      shape.moveTo(-0.28, 0.52);
+      shape.lineTo(0.22, 0.52);
+      shape.quadraticCurveTo(0.26, 0.3, 0.24, 0.0);
+      shape.quadraticCurveTo(0.2, -0.7, 0.05, -1.28);
+      shape.quadraticCurveTo(-0.02, -1.55, -0.18, -1.7);
+      shape.lineTo(-0.4, -1.55);
+      shape.quadraticCurveTo(-0.28, -1.1, -0.22, -0.36);
+      shape.quadraticCurveTo(-0.18, 0.08, -0.28, 0.52);
+      const geo = new THREE.ExtrudeGeometry(shape, {
+        depth: 0.54,
+        bevelEnabled: true,
+        bevelSegments: 3,
+        bevelSize: 0.025,
+        bevelThickness: 0.025,
+        curveSegments: 20
+      });
+      geo.center();
+      geo.rotateY(Math.PI / 2);
+      return geo;
+    }
+
+    function addRailSlots(parent, startX, count, spacing, y, z, w = 0.07, h = 0.05, d = 0.18) {
+      for (let i = 0; i < count; i++) {
+        addMesh(parent, roundedBox(w, h, d), materials.graphite, [startX + i * spacing, y, z]);
+      }
+    }
+
+    function addScrew(parent, x, y, z, r = 0.03) {
+      const screw = addMesh(parent, cylinderX(r, r, 0.04, 12), materials.accent, [x, y, z], [0, 0, Math.PI / 2]);
+      const slot = addMesh(parent, roundedBox(0.026, 0.004, 0.022), materials.dark, [x, y, z + 0.002]);
+      slot.rotation.y = Math.PI / 5;
+      return screw;
+    }
+
+    function addVentCuts(parent, startX, rows, cols, spacingX, spacingY, z) {
+      for (let r = 0; r < rows; r++) {
+        for (let c = 0; c < cols; c++) {
+          const px = startX + c * spacingX;
+          const py = 0.18 - r * spacingY;
+          const vent = addMesh(parent, roundedBox(0.16, 0.05, 0.03), materials.dark, [px, py, z]);
+          vent.material = materials.dark;
+        }
+      }
+    }
+
+    function buildRifle() {
+      const g = movingParts.recoilGroup;
+
+      const receiverGroup = new THREE.Group();
+      receiverGroup.name = 'Receiver';
+      g.add(receiverGroup);
+
+      addMesh(receiverGroup, roundedBox(2.15, 0.38, 0.5), materials.black, [-0.15, 0.34, 0]);
+      addMesh(receiverGroup, roundedBox(2.0, 0.26, 0.62), materials.graphite, [-0.18, 0.08, 0]);
+      addMesh(receiverGroup, roundedBox(0.52, 0.18, 0.5), materials.gunmetal, [0.64, 0.12, 0]);
+      addMesh(receiverGroup, roundedBox(0.4, 0.11, 0.43), materials.dark, [0.16, 0.2, 0.29], [0, 0, 0.03]);
+      addMesh(receiverGroup, roundedBox(0.13, 0.16, 0.13), materials.gunmetal, [0.87, 0.16, 0.29]);
+      addMesh(receiverGroup, roundedBox(0.13, 0.12, 0.06), materials.gunmetal, [0.9, 0.17, 0.36]);
+      addMesh(receiverGroup, roundedBox(0.06, 0.2, 0.06), materials.gunmetal, [-0.22, 0.16, 0.34]);
+      addMesh(receiverGroup, roundedBox(0.28, 0.04, 0.58), materials.accent, [-0.05, 0.56, 0]);
+
+      movingParts.bolt = addMesh(receiverGroup, roundedBox(0.44, 0.12, 0.22), materials.dark, [0.2, 0.37, 0.11]);
+      addMesh(receiverGroup, roundedBox(0.2, 0.05, 0.05), materials.gunmetal, [0.76, 0.43, 0.16], [0, 0.3, -0.3]);
+      addMesh(receiverGroup, roundedBox(0.16, 0.05, 0.03), materials.graphite, [0.72, 0.38, 0.18], [0, 0.15, 0.15]);
+
+      addScrew(receiverGroup, 0.38, 0.08, 0.32, 0.028);
+      addScrew(receiverGroup, -0.26, 0.05, 0.32, 0.028);
+      addScrew(receiverGroup, 0.02, 0.3, -0.27, 0.028);
+      addScrew(receiverGroup, -0.7, 0.28, 0.26, 0.028);
+
+      const magWell = addMesh(g, roundedBox(0.42, 0.58, 0.62), materials.black, [0.07, -0.18, 0], [0, 0, -0.08]);
+      addMesh(g, roundedBox(0.24, 0.12, 0.15), materials.graphite, [0.26, -0.1, -0.33], [0, 0.2, 0]);
+
+      const triggerGuard = addMesh(g, new THREE.TorusGeometry(0.19, 0.02, 10, 22, Math.PI), materials.gunmetal, [0.52, -0.22, 0], [0, Math.PI / 2, Math.PI]);
+      triggerGuard.scale.set(0.92, 1.0, 1.35);
+
+      movingParts.trigger = addMesh(g, roundedBox(0.03, 0.18, 0.06), materials.dark, [0.54, -0.2, 0], [0, 0, -0.22]);
+
+      movingParts.mag = addMesh(g, makeMagazineGeometry(), materials.graphite, [-0.18, -0.9, 0]);
+      movingParts.mag.scale.set(0.9, 0.9, 0.9);
+
+      const grip = addMesh(g, makeGripGeometry(), materials.rubber, [0.9, -0.42, 0], [0.08, 0, -0.04]);
+      for (let i = 0; i < 6; i++) {
+        addMesh(g, roundedBox(0.01, 0.14, 0.44), materials.accent, [0.96 - i * 0.045, -0.6 - i * 0.07, 0], [0, 0, -0.42]);
+      }
+
+      const stockGroup = new THREE.Group();
+      stockGroup.name = 'Stock';
+      g.add(stockGroup);
+      addMesh(stockGroup, roundedBox(0.74, 0.18, 0.18), materials.gunmetal, [1.55, 0.26, 0]);
+      addMesh(stockGroup, roundedBox(0.18, 0.3, 0.18), materials.gunmetal, [1.95, 0.12, 0]);
+      addMesh(stockGroup, roundedBox(0.5, 0.55, 0.2), materials.black, [2.42, 0.26, 0], [0, 0, -0.14]);
+      addMesh(stockGroup, roundedBox(0.14, 0.4, 0.3), materials.rubber, [2.82, -0.06, 0], [0, 0, -0.18]);
+      addMesh(stockGroup, roundedBox(0.26, 0.08, 0.16), materials.dark, [2.15, 0.41, 0]);
+      addMesh(stockGroup, roundedBox(0.12, 0.08, 0.12), materials.accent, [1.84, 0.27, 0]);
+
+      const handguard = new THREE.Group();
+      handguard.name = 'Handguard';
+      g.add(handguard);
+      addMesh(handguard, roundedBox(2.15, 0.48, 0.72), materials.black, [-1.95, 0.28, 0]);
+      addMesh(handguard, roundedBox(2.12, 0.1, 0.32), materials.graphite, [-1.95, 0.55, 0]);
+      addMesh(handguard, roundedBox(2.0, 0.08, 0.18), materials.graphite, [-1.95, 0.03, 0.28]);
+      addMesh(handguard, roundedBox(2.0, 0.08, 0.18), materials.graphite, [-1.95, 0.03, -0.28]);
+      addRailSlots(handguard, -2.8, 14, 0.13, 0.61, 0, 0.07, 0.05, 0.18);
+      addVentCuts(handguard, -2.7, 2, 11, 0.18, 0.17, 0.37);
+      addVentCuts(handguard, -2.7, 2, 11, 0.18, 0.17, -0.37);
+      for (let i = 0; i < 8; i++) {
+        addMesh(handguard, roundedBox(0.03, 0.38, 0.03), materials.accent, [-2.68 + i * 0.28, 0.2, 0.31]);
+        addMesh(handguard, roundedBox(0.03, 0.38, 0.03), materials.accent, [-2.68 + i * 0.28, 0.2, -0.31]);
+      }
+
+      addMesh(g, cylinderX(0.08, 0.08, 2.85, 18), materials.gunmetal, [-1.8, 0.27, 0]);
+      addMesh(g, cylinderX(0.1, 0.1, 0.22, 18), materials.black, [-0.82, 0.27, 0]);
+      addMesh(g, cylinderX(0.12, 0.12, 0.1, 18), materials.black, [-3.05, 0.27, 0]);
+      addMesh(g, cylinderX(0.1, 0.13, 0.34, 18), materials.gunmetal, [-3.37, 0.27, 0]);
+      addMesh(g, cylinderX(0.14, 0.1, 0.18, 18), materials.dark, [-3.56, 0.27, 0]);
+      addMesh(g, roundedBox(0.06, 0.18, 0.18), materials.accent, [-3.45, 0.27, 0.14]);
+      addMesh(g, roundedBox(0.06, 0.18, 0.18), materials.accent, [-3.45, 0.27, -0.14]);
+
+      const frontSight = new THREE.Group();
+      frontSight.name = 'Front Sight';
+      g.add(frontSight);
+      addMesh(frontSight, roundedBox(0.1, 0.44, 0.1), materials.gunmetal, [-2.98, 0.56, 0]);
+      addMesh(frontSight, roundedBox(0.22, 0.05, 0.28), materials.graphite, [-3.0, 0.38, 0]);
+      addMesh(frontSight, roundedBox(0.03, 0.18, 0.03), materials.accent, [-2.98, 0.74, 0]);
+
+      const rearSight = new THREE.Group();
+      rearSight.name = 'Rear Sight';
+      g.add(rearSight);
+      addMesh(rearSight, roundedBox(0.28, 0.12, 0.28), materials.graphite, [0.44, 0.61, 0]);
+      addMesh(rearSight, roundedBox(0.06, 0.24, 0.06), materials.accent, [0.44, 0.74, 0]);
+      addMesh(rearSight, roundedBox(0.16, 0.04, 0.2), materials.dark, [0.44, 0.69, 0]);
+
+      const optic = new THREE.Group();
+      optic.name = 'Optic';
+      g.add(optic);
+      addMesh(optic, roundedBox(0.24, 0.08, 0.32), materials.gunmetal, [-0.38, 0.61, 0]);
+      addMesh(optic, roundedBox(0.42, 0.4, 0.34), materials.black, [-0.44, 0.88, 0]);
+      addMesh(optic, roundedBox(0.28, 0.24, 0.24), materials.dark, [-0.18, 0.88, 0]);
+      addMesh(optic, roundedBox(0.08, 0.12, 0.36), materials.graphite, [-0.65, 0.76, 0]);
+      addMesh(optic, roundedBox(0.06, 0.08, 0.42), materials.accent, [-0.46, 1.04, 0]);
+      addMesh(optic, roundedBox(0.02, 0.12, 0.18), materials.glass, [-0.01, 0.88, 0]);
+      const emitter = addMesh(optic, roundedBox(0.015, 0.015, 0.015), materials.redDot, [0.055, 0.89, 0]);
+      emitter.castShadow = false;
+
+      const foregrip = new THREE.Group();
+      foregrip.name = 'Foregrip';
+      g.add(foregrip);
+      addMesh(foregrip, roundedBox(0.18, 0.56, 0.18), materials.rubber, [-2.0, -0.14, 0], [0, 0, 0.05]);
+      addMesh(foregrip, roundedBox(0.12, 0.08, 0.22), materials.graphite, [-2.0, 0.12, 0]);
+      addMesh(foregrip, roundedBox(0.1, 0.1, 0.1), materials.accent, [-2.0, -0.42, 0]);
+
+      const light = new THREE.Group();
+      light.name = 'Weapon Light';
+      g.add(light);
+      addMesh(light, roundedBox(0.36, 0.14, 0.14), materials.gunmetal, [-2.42, 0.02, -0.48]);
+      addMesh(light, cylinderX(0.08, 0.1, 0.16, 18), materials.black, [-2.62, 0.02, -0.48]);
+      addMesh(light, roundedBox(0.1, 0.05, 0.1), materials.accent, [-2.25, 0.12, -0.48]);
+
+      movingParts.muzzleFlash = new THREE.Group();
+      g.add(movingParts.muzzleFlash);
+      movingParts.muzzleFlash.position.set(-3.68, 0.27, 0);
+      const flashCore = addMesh(movingParts.muzzleFlash, new THREE.OctahedronGeometry(0.18, 0), materials.flash, [0, 0, 0]);
+      const flashBloom = addMesh(movingParts.muzzleFlash, new THREE.OctahedronGeometry(0.28, 0), new THREE.MeshBasicMaterial({ color: 0xfff2c6, transparent: true, opacity: 0 }), [0, 0, 0]);
+      flashBloom.scale.set(1.4, 0.6, 0.6);
+      flashCore.scale.set(1.8, 0.65, 0.65);
+      movingParts.muzzleFlash.userData.core = flashCore;
+      movingParts.muzzleFlash.userData.bloom = flashBloom;
+      movingParts.muzzleFlash.visible = false;
+
+      for (let i = 0; i < 5; i++) {
+        const puff = addMesh(g, new THREE.SphereGeometry(0.11 + i * 0.03, 14, 14), materials.smoke.clone(), [-3.6, 0.28, 0]);
+        puff.visible = false;
+        movingParts.smoke.push(puff);
+      }
+
+      movingParts.casing = addMesh(g, cylinderX(0.045, 0.045, 0.18, 12), materials.brass, [0.22, 0.3, 0.34], [0.2, 0, 0.2]);
+      movingParts.casing.visible = false;
+      movingParts.casingTrail = addMesh(g, new THREE.SphereGeometry(0.04, 8, 8), new THREE.MeshBasicMaterial({ color: 0xffd27a, transparent: true, opacity: 0 }), [0.22, 0.3, 0.34], [0,0,0], false, false);
+      movingParts.casingTrail.visible = false;
+
+      // subtle surface detail layers
+      const detailParent = g;
+      const detailPoints = [
+        [-0.54, 0.45, 0.26], [-0.34, 0.45, -0.26], [-0.86, 0.09, 0.33],
+        [-1.32, 0.51, 0], [-1.76, 0.54, 0], [-2.24, 0.52, 0],
+        [1.32, 0.25, 0.12], [2.16, 0.33, -0.1], [2.48, 0.44, 0.08],
+      ];
+      detailPoints.forEach(([x, y, z], idx) => {
+        addMesh(detailParent, roundedBox(0.08 + (idx % 3) * 0.03, 0.02, 0.02), materials.accent, [x, y, z], [0, idx * 0.35, 0]);
+      });
+
+      for (let i = 0; i < 12; i++) {
+        addScrew(detailParent, -2.72 + i * 0.25, 0.03, 0.32, 0.018);
+        addScrew(detailParent, -2.72 + i * 0.25, 0.03, -0.32, 0.018);
+      }
+
+      rifle.rotation.y = Math.PI;
+      rifle.position.x = 0.18;
+    }
+
+    buildRifle();
+
+    const stage = new THREE.Group();
+    scene.add(stage);
+
+    const floorMat = new THREE.ShadowMaterial({ opacity: 0.24 });
+    const floor = new THREE.Mesh(new THREE.CircleGeometry(7.5, 64), floorMat);
+    floor.rotation.x = -Math.PI / 2;
+    floor.position.y = -0.9;
+    floor.receiveShadow = true;
+    stage.add(floor);
+
+    const glossyDisc = new THREE.Mesh(
+      new THREE.CircleGeometry(3.8, 64),
+      new THREE.MeshPhysicalMaterial({
+        color: 0x242e3b,
+        metalness: 0.15,
+        roughness: 0.2,
+        clearcoat: 1,
+        clearcoatRoughness: 0.12,
+        transparent: true,
+        opacity: 0.72
+      })
+    );
+    glossyDisc.rotation.x = -Math.PI / 2;
+    glossyDisc.position.y = -0.895;
+    stage.add(glossyDisc);
+
+    const backGlow = new THREE.Mesh(
+      new THREE.PlaneGeometry(18, 10),
+      new THREE.MeshBasicMaterial({ color: 0x26384f, transparent: true, opacity: 0.76 })
+    );
+    backGlow.position.set(0, 2.1, -5.2);
+    scene.add(backGlow);
+
+    const hemi = new THREE.HemisphereLight(0xe1eeff, 0x25303d, 1.65);
+    scene.add(hemi);
+
+    const key = new THREE.DirectionalLight(0xf8fbff, 4.2);
+    key.position.set(4.5, 5.5, 5.0);
+    key.castShadow = true;
+    key.shadow.mapSize.set(2048, 2048);
+    key.shadow.camera.left = -8;
+    key.shadow.camera.right = 8;
+    key.shadow.camera.top = 8;
+    key.shadow.camera.bottom = -8;
+    key.shadow.camera.near = 0.5;
+    key.shadow.camera.far = 20;
+    scene.add(key);
+
+    const rimLeft = new THREE.DirectionalLight(0x8ed6ff, 2.5);
+    rimLeft.position.set(-6, 2, -2);
+    scene.add(rimLeft);
+
+    const rimRight = new THREE.DirectionalLight(0xe1bdff, 2.1);
+    rimRight.position.set(5, 1.5, -4);
+    scene.add(rimRight);
+
+    const under = new THREE.PointLight(0x9bddff, 1.1, 12, 2);
+    under.position.set(0, -0.1, 2.4);
+    scene.add(under);
+
+    const topAccent = new THREE.SpotLight(0xffffff, 20, 24, 0.48, 0.75, 1.2);
+    topAccent.position.set(0, 6, 2);
+    topAccent.target.position.set(0, 0.5, 0);
+    scene.add(topAccent, topAccent.target);
+
+    const editorRoot = movingParts.recoilGroup;
+    editorRoot.name = 'Rifle Model';
+
+    const ui = {
+      list: document.getElementById('partsList'),
+      count: document.getElementById('partCount'),
+      search: document.getElementById('partSearch'),
+      name: document.getElementById('nameInput'),
+      type: document.getElementById('selectionType'),
+      status: document.getElementById('statusText'),
+      color: document.getElementById('colorInput'),
+      values: {
+        px: document.getElementById('px'), py: document.getElementById('py'), pz: document.getElementById('pz'),
+        rx: document.getElementById('rx'), ry: document.getElementById('ry'), rz: document.getElementById('rz'),
+        sx: document.getElementById('sx'), sy: document.getElementById('sy'), sz: document.getElementById('sz')
+      }
+    };
+
+    const EXISTING_WEAPONS = {
+      'game:pistol': {
+        key: 'game:pistol',
+        id: 'pistol',
+        name: 'Field Pistol',
+        sourceName: 'Game weapon slot 1',
+        source: 'game'
+      },
+      'game:smg': {
+        key: 'game:smg',
+        id: 'smg',
+        name: 'Mill SMG',
+        sourceName: 'Game weapon slot 2',
+        source: 'game'
+      },
+      'game:shotgun': {
+        key: 'game:shotgun',
+        id: 'shotgun',
+        name: 'Trench Shotgun',
+        sourceName: 'Game weapon slot 3',
+        source: 'game'
+      },
+      'game:revolver': {
+        key: 'game:revolver',
+        id: 'revolver',
+        name: 'Rust Revolver',
+        sourceName: 'Game weapon slot 4',
+        source: 'game'
+      },
+      'game:carbine': {
+        key: 'game:carbine',
+        id: 'carbine',
+        name: 'Hunting Carbine',
+        sourceName: 'Game weapon slot 5',
+        source: 'game'
+      },
+      'game:rifle': {
+        key: 'game:rifle',
+        id: 'rifle',
+        name: 'Service Rifle',
+        sourceName: 'Game weapon slot 6',
+        source: 'game'
+      },
+      'game:lmg': {
+        key: 'game:lmg',
+        id: 'lmg',
+        name: 'Belt Fed',
+        sourceName: 'Game weapon slot 7',
+        source: 'game'
+      }
+    };
+    const KNOWN_SOURCE_WEAPON_IDS = {
+      '1911handgunmodel.json': 'pistol',
+      'minismg.json': 'smg',
+      'm4riflemodel.json': 'rifle',
+      'semiautorifle.json': 'carbine'
+    };
+    const EDITOR_WORKING_SIZE = 4.8;
+    let currentWeaponId = 'game:rifle';
+    let gameWeaponCatalogPromise = null;
+
+    const raycaster = new THREE.Raycaster();
+    const pointer = new THREE.Vector2();
+    const selectedParts = new Set();
+    let selectedPart = null;
+    let pointerStart = null;
+    let history = [];
+    let historyIndex = -1;
+    let restoringHistory = false;
+    let groupTransformState = null;
+    let updatingSelectionProxy = false;
+
+    const selectionProxy = new THREE.Object3D();
+    selectionProxy.name = 'Forge Multi-Selection Pivot';
+    scene.add(selectionProxy);
+
+    function getParts() {
+      const parts = [];
+      editorRoot.traverse((object) => {
+        if (object.isMesh && object.userData.editorPart) parts.push(object);
+      });
+      return parts;
+    }
+
+    function setStatus(message) {
+      ui.status.textContent = message;
+    }
+
+    function sourceDisplayName(filename) {
+      return filename.replace(/\.json$/i, '')
+        .replace(/[_-]+/g, ' ')
+        .replace(/([a-z])([A-Z])/g, '$1 $2')
+        .replace(/\b\w/g, (letter) => letter.toUpperCase());
+    }
+
+    function sourceWeaponKey(filename) {
+      return `source-file:${encodeURIComponent(filename)}`;
+    }
+
+    function registerSourceWeapon(file) {
+      const filename = String(file.filename || '').split('/').pop();
+      if (!filename || !/\.json$/i.test(filename)) return null;
+      const key = sourceWeaponKey(filename);
+      EXISTING_WEAPONS[key] = {
+        key,
+        id: file.weaponId || KNOWN_SOURCE_WEAPON_IDS[filename.toLowerCase()] || null,
+        name: file.name || sourceDisplayName(filename),
+        sourceName: filename,
+        source: 'folder',
+        filename,
+        path: `gunshtml/${encodeURIComponent(filename)}`
+      };
+      return key;
+    }
+
+    function renderSourceWeaponOptions() {
+      const group = document.getElementById('sourceWeaponOptions');
+      const previousValue = document.getElementById('existingWeaponSelect').value;
+      const sources = Object.values(EXISTING_WEAPONS)
+        .filter((weapon) => weapon.source === 'folder')
+        .sort((a, b) => a.name.localeCompare(b.name));
+      group.replaceChildren();
+      for (const weapon of sources) {
+        const option = document.createElement('option');
+        option.value = weapon.key;
+        option.textContent = weapon.name;
+        group.appendChild(option);
+      }
+      if (EXISTING_WEAPONS[previousValue]) {
+        document.getElementById('existingWeaponSelect').value = previousValue;
+      }
+      group.label = `Source models in gunshtml (${sources.length})`;
+      return sources.length;
+    }
+
+    async function discoverSourceWeapons(showStatus = false) {
+      const bundledFiles = window.DEAD_GAME_SOURCE_WEAPON_FILES || [];
+      bundledFiles.forEach(registerSourceWeapon);
+      let discoveredFromServer = 0;
+
+      if (location.protocol !== 'file:') {
+        try {
+          const response = await fetch(`gunshtml/?cacheBust=${Date.now()}`, { cache: 'no-store' });
+          if (!response.ok) throw new Error(`HTTP ${response.status}`);
+          const documentIndex = new DOMParser().parseFromString(await response.text(), 'text/html');
+          const filenames = Array.from(documentIndex.querySelectorAll('a[href]'))
+            .map((anchor) => {
+              try {
+                return decodeURIComponent(new URL(anchor.getAttribute('href'), response.url).pathname.split('/').pop());
+              } catch {
+                return '';
+              }
+            })
+            .filter((filename) => /\.json$/i.test(filename));
+          for (const filename of new Set(filenames)) {
+            if (registerSourceWeapon({ filename })) discoveredFromServer++;
+          }
+        } catch (error) {
+          if (showStatus) setStatus(`Folder scan unavailable: ${error.message}`);
+        }
+      }
+
+      const count = renderSourceWeaponOptions();
+      if (showStatus) {
+        const mode = location.protocol === 'file:' ? 'bundled catalog' : 'gunshtml scan';
+        setStatus(`Found ${count} source weapon model${count === 1 ? '' : 's'} via ${mode}`);
+      }
+      return { count, discoveredFromServer };
+    }
+
+    function setFieldState(enabled, colorEnabled = enabled) {
+      ui.name.disabled = !enabled;
+      Object.values(ui.values).forEach((input) => input.disabled = !enabled);
+      ui.color.disabled = !colorEnabled;
+    }
+
+    function refreshInspector() {
+      const count = selectedParts.size;
+      if (!count) {
+        ui.name.value = 'Nothing selected';
+        ui.type.textContent = 'None';
+        setFieldState(false);
+        return;
+      }
+      if (count > 1) {
+        ui.name.value = `${count} parts selected`;
+        ui.type.textContent = 'Multiple';
+        setFieldState(false, true);
+        return;
+      }
+      setFieldState(true);
+      ui.name.value = selectedPart.name;
+      ui.type.textContent = selectedPart.geometry?.type?.replace('Geometry', '') || 'Mesh';
+      ui.values.px.value = selectedPart.position.x.toFixed(3);
+      ui.values.py.value = selectedPart.position.y.toFixed(3);
+      ui.values.pz.value = selectedPart.position.z.toFixed(3);
+      ui.values.rx.value = THREE.MathUtils.radToDeg(selectedPart.rotation.x).toFixed(1);
+      ui.values.ry.value = THREE.MathUtils.radToDeg(selectedPart.rotation.y).toFixed(1);
+      ui.values.rz.value = THREE.MathUtils.radToDeg(selectedPart.rotation.z).toFixed(1);
+      ui.values.sx.value = selectedPart.scale.x.toFixed(3);
+      ui.values.sy.value = selectedPart.scale.y.toFixed(3);
+      ui.values.sz.value = selectedPart.scale.z.toFixed(3);
+      const material = Array.isArray(selectedPart.material) ? selectedPart.material[0] : selectedPart.material;
+      if (material?.color) ui.color.value = `#${material.color.getHexString()}`;
+    }
+
+    function selectedPartArray() {
+      return Array.from(selectedParts);
+    }
+
+    function topLevelSelectedParts() {
+      return selectedPartArray().filter((part) => {
+        let parent = part.parent;
+        while (parent) {
+          if (selectedParts.has(parent)) return false;
+          parent = parent.parent;
+        }
+        return true;
+      });
+    }
+
+    function selectionWorldBounds() {
+      const bounds = new THREE.Box3();
+      let hasBounds = false;
+      for (const part of selectedParts) {
+        part.updateWorldMatrix(true, false);
+        const partBounds = new THREE.Box3().setFromObject(part);
+        if (partBounds.isEmpty()) continue;
+        bounds.union(partBounds);
+        hasBounds = true;
+      }
+      return hasBounds ? bounds : null;
+    }
+
+    function updateSelectionTransformTarget() {
+      transformControls.detach();
+      groupTransformState = null;
+      if (!selectedParts.size) return;
+      if (selectedParts.size === 1) {
+        transformControls.attach(selectedPart);
+        return;
+      }
+
+      const bounds = selectionWorldBounds();
+      if (!bounds) return;
+      updatingSelectionProxy = true;
+      selectionProxy.position.copy(bounds.getCenter(new THREE.Vector3()));
+      selectionProxy.quaternion.identity();
+      selectionProxy.scale.set(1, 1, 1);
+      selectionProxy.updateMatrixWorld(true);
+      transformControls.attach(selectionProxy);
+      updatingSelectionProxy = false;
+    }
+
+    function selectPart(part, additive = false) {
+      if (!additive) selectedParts.clear();
+
+      if (part) {
+        if (additive && selectedParts.has(part)) {
+          selectedParts.delete(part);
+        } else {
+          selectedParts.add(part);
+          selectedPart = part;
+        }
+      }
+
+      if (!selectedParts.size) {
+        selectedPart = null;
+        setStatus('Selection cleared');
+      } else {
+        if (!selectedParts.has(selectedPart)) {
+          selectedPart = selectedPartArray()[selectedParts.size - 1] || null;
+        }
+        setStatus(selectedParts.size === 1
+          ? `Selected: ${selectedPart.name}`
+          : `${selectedParts.size} parts selected — Shift-click to add or remove`);
+      }
+      updateSelectionTransformTarget();
+      refreshInspector();
+      refreshPartsList();
+    }
+
+    function setOuterTransformMode(neutral) {
+      world.rotation.set(0, 0, 0);
+      rifleRig.position.set(0, neutral ? 0 : 0.9, 0);
+      rifleRig.rotation.set(0, 0, neutral ? 0 : -0.06);
+      rifleRig.scale.set(1, 1, 1);
+      rifle.position.set(neutral ? 0 : 0.18, 0, 0);
+      rifle.rotation.set(0, neutral ? 0 : Math.PI, 0);
+      rifle.scale.set(1, 1, 1);
+    }
+
+    function refreshPartsList() {
+      const filter = ui.search.value.trim().toLowerCase();
+      const parts = getParts();
+      ui.count.textContent = parts.length;
+      ui.list.replaceChildren();
+      parts
+        .filter((part) => !filter || part.name.toLowerCase().includes(filter))
+        .forEach((part) => {
+          const button = document.createElement('button');
+          button.className = `part-row${selectedParts.has(part) ? ' active' : ''}`;
+          const material = Array.isArray(part.material) ? part.material[0] : part.material;
+          const color = material?.color ? `#${material.color.getHexString()}` : '#64748b';
+          button.innerHTML = `<span class="part-dot" style="background:${color}"></span><span>${part.name}</span>`;
+          button.addEventListener('click', (event) => selectPart(part, event.shiftKey));
+          ui.list.appendChild(button);
+        });
+    }
+
+    function measureObject(root) {
+      root.updateWorldMatrix(true, true);
+      const bounds = new THREE.Box3().setFromObject(root);
+      if (bounds.isEmpty()) return null;
+      const size = bounds.getSize(new THREE.Vector3());
+      return {
+        bounds,
+        size,
+        longestAxis: Math.max(size.x, size.y, size.z)
+      };
+    }
+
+    async function normalizeProjectForGame(root, weapon) {
+      const sourceMeasurement = measureObject(root);
+      if (!sourceMeasurement || sourceMeasurement.longestAxis <= 0) return;
+
+      let targetLongestAxis = sourceMeasurement.longestAxis;
+      let scaleFactor = 1;
+
+      if (weapon.source === 'folder' && weapon.id) {
+        const gameModels = await loadGameWeaponCatalog();
+        const referenceData = gameModels[weapon.id];
+        if (!referenceData) throw new Error(`No in-game ${weapon.id} reference exists for normalization`);
+        const reference = new THREE.ObjectLoader().parse(referenceData);
+        const referenceMeasurement = measureObject(reference);
+        if (!referenceMeasurement || referenceMeasurement.longestAxis <= 0) {
+          throw new Error(`The in-game ${weapon.id} reference has no measurable geometry`);
+        }
+        targetLongestAxis = referenceMeasurement.longestAxis;
+        scaleFactor = targetLongestAxis / sourceMeasurement.longestAxis;
+        root.scale.multiplyScalar(scaleFactor);
+        root.updateMatrixWorld(true);
+      }
+
+      root.userData = {
+        ...root.userData,
+        forgeGameReady: true,
+        forgeOriginalLongestAxis: sourceMeasurement.longestAxis,
+        forgeGameTargetLongestAxis: targetLongestAxis,
+        forgeGameNormalizationScale: scaleFactor
+      };
+    }
+
+    async function normalizeCurrentProjectForGame() {
+      const selectedKey = document.getElementById('existingWeaponSelect').value;
+      const weapon = EXISTING_WEAPONS[selectedKey];
+      if (!weapon?.id) {
+        setStatus('Select an in-game weapon size before normalizing');
+        return;
+      }
+
+      const button = document.getElementById('normalizeForGameBtn');
+      button.disabled = true;
+      setStatus(`Normalizing to ${weapon.name} game scale...`);
+
+      try {
+        rifleRig.scale.set(1, 1, 1);
+        rifleRig.updateMatrixWorld(true);
+        const currentMeasurement = measureObject(editorRoot);
+        if (!currentMeasurement || currentMeasurement.longestAxis <= 0) {
+          throw new Error('The current project has no measurable geometry');
+        }
+
+        const gameModels = await loadGameWeaponCatalog();
+        const referenceData = gameModels[weapon.id];
+        if (!referenceData) throw new Error(`The game did not expose a ${weapon.id} reference model`);
+        const reference = new THREE.ObjectLoader().parse(referenceData);
+        const referenceMeasurement = measureObject(reference);
+        if (!referenceMeasurement || referenceMeasurement.longestAxis <= 0) {
+          throw new Error('The game reference has no measurable geometry');
+        }
+
+        const scaleFactor = referenceMeasurement.longestAxis / currentMeasurement.longestAxis;
+        editorRoot.scale.multiplyScalar(scaleFactor);
+        editorRoot.userData = {
+          ...editorRoot.userData,
+          forgeGameReady: true,
+          forgeWeaponId: weapon.id,
+          forgeCatalogKey: selectedKey,
+          forgeGameTargetLongestAxis: referenceMeasurement.longestAxis,
+          forgeGameNormalizationScale: (editorRoot.userData.forgeGameNormalizationScale || 1) * scaleFactor
+        };
+        currentWeaponId = selectedKey;
+        editorRoot.updateMatrixWorld(true);
+        normalizeEditorDisplay();
+        resetHistory(`Normalize for ${weapon.name}`);
+        frameModel();
+        setStatus(`Normalized to ${weapon.name} game scale (${scaleFactor.toFixed(4)}× adjustment)`);
+      } catch (error) {
+        normalizeEditorDisplay();
+        frameModel();
+        setStatus(`Could not normalize model: ${error.message}`);
+      } finally {
+        button.disabled = false;
+      }
+    }
+
+    function normalizeEditorDisplay() {
+      rifleRig.scale.set(1, 1, 1);
+      const measurement = measureObject(editorRoot);
+      if (!measurement || measurement.longestAxis <= 0) return 1;
+      const displayScale = EDITOR_WORKING_SIZE / measurement.longestAxis;
+      rifleRig.scale.setScalar(displayScale);
+      rifleRig.updateMatrixWorld(true);
+      editorRoot.userData.forgeEditorDisplayScale = displayScale;
+      return displayScale;
+    }
+
+    function prepareEditableProject(root, weapon = {}) {
+      let unnamedIndex = 1;
+      root.traverse((object) => {
+        if (!object.isMesh) return;
+        object.userData = { ...object.userData, editorPart: true };
+        object.castShadow = true;
+        object.receiveShadow = true;
+        if (!object.name || /^Mesh(?:\.\d+)?$/.test(object.name)) {
+          const typeName = object.geometry?.type?.replace('Geometry', '') || 'Mesh';
+          object.name = `${typeName} ${unnamedIndex++}`;
+        }
+      });
+      root.name = weapon.name || root.name || 'Weapon Model';
+      root.userData = {
+        ...root.userData,
+        forgeNeutralOuter: root.userData.forgeNeutralOuter ?? true,
+        forgeProjectName: weapon.name || root.userData.forgeProjectName || root.name,
+        forgeWeaponId: weapon.id || root.userData.forgeWeaponId || 'custom',
+        forgeCatalogKey: weapon.key || root.userData.forgeCatalogKey || 'custom',
+        forgeSourcePath: weapon.path || root.userData.forgeSourcePath || ''
+      };
+      return root;
+    }
+
+    function replaceEditorRoot(loaded) {
+      selectPart(null);
+      editorRoot.clear();
+      editorRoot.userData = { ...loaded.userData };
+      editorRoot.position.copy(loaded.position);
+      editorRoot.quaternion.copy(loaded.quaternion);
+      editorRoot.scale.copy(loaded.scale);
+      editorRoot.updateMatrix();
+      while (loaded.children.length) editorRoot.add(loaded.children[0]);
+      setOuterTransformMode(Boolean(editorRoot.userData.forgeNeutralOuter));
+      normalizeEditorDisplay();
+      refreshPartsList();
+    }
+
+    function loadGameWeaponCatalog() {
+      if (window.DEAD_GAME_RUNTIME_WEAPON_MODELS) {
+        return Promise.resolve(window.DEAD_GAME_RUNTIME_WEAPON_MODELS);
+      }
+      if (gameWeaponCatalogPromise) return gameWeaponCatalogPromise;
+
+      gameWeaponCatalogPromise = new Promise((resolve, reject) => {
+        const iframe = document.createElement('iframe');
+        iframe.setAttribute('aria-hidden', 'true');
+        iframe.style.cssText = 'position:fixed;width:1px;height:1px;left:-10000px;top:-10000px;opacity:0;pointer-events:none';
+        let settled = false;
+
+        const cleanup = () => {
+          window.removeEventListener('message', onMessage);
+          iframe.remove();
+        };
+        const finish = (callback, value) => {
+          if (settled) return;
+          settled = true;
+          cleanup();
+          callback(value);
+        };
+        const onMessage = (event) => {
+          if (event.source !== iframe.contentWindow) return;
+          if (event.data?.type !== 'dead-game-weapon-models') return;
+          if (event.data.error) {
+            finish(reject, new Error(event.data.error));
+            return;
+          }
+          window.DEAD_GAME_RUNTIME_WEAPON_MODELS = event.data.models || {};
+          window.DEAD_GAME_RUNTIME_WEAPON_DEFS = event.data.definitions || {};
+          finish(resolve, window.DEAD_GAME_RUNTIME_WEAPON_MODELS);
+        };
+
+        window.addEventListener('message', onMessage);
+        document.body.appendChild(iframe);
+        const separator = location.protocol === 'file:' ? '?' : `?cacheBust=${Date.now()}&`;
+        iframe.src = `index.html${separator}weaponForgeBridge=1`;
+        setTimeout(() => finish(reject, new Error('The game did not return its weapon models before the request timed out')), 20000);
+      }).catch((error) => {
+        gameWeaponCatalogPromise = null;
+        throw error;
+      });
+
+      return gameWeaponCatalogPromise;
+    }
+
+    async function loadExistingWeapon(id) {
+      const weapon = EXISTING_WEAPONS[id];
+      if (!weapon) {
+        setStatus('Choose a weapon from the Existing Weapons list');
+        return;
+      }
+
+      const select = document.getElementById('existingWeaponSelect');
+      const button = document.getElementById('loadExistingWeaponBtn');
+      select.disabled = true;
+      button.disabled = true;
+      setStatus(`Loading ${weapon.name} (${weapon.sourceName})...`);
+
+      try {
+        let projectData = null;
+        if (weapon.source === 'game') {
+          const gameModels = await loadGameWeaponCatalog();
+          projectData = gameModels[weapon.id];
+          if (!projectData) throw new Error(`The game did not expose a ${weapon.id} model`);
+        } else {
+          const bundledData = window.DEAD_GAME_WEAPON_MODELS_BY_FILE?.[weapon.filename];
+          if (location.protocol === 'file:') {
+            if (!bundledData) throw new Error('The local weapon catalog is missing this model');
+            projectData = bundledData;
+          } else {
+            try {
+              const response = await fetch(weapon.path, { cache: 'no-store' });
+              if (!response.ok) throw new Error(`HTTP ${response.status}`);
+              projectData = await response.json();
+            } catch (fetchError) {
+              if (!bundledData) throw fetchError;
+              projectData = bundledData;
+            }
+          }
+        }
+
+        const loaded = new THREE.ObjectLoader().parse(projectData);
+        await normalizeProjectForGame(loaded, weapon);
+        prepareEditableProject(loaded, weapon);
+        replaceEditorRoot(loaded);
+        currentWeaponId = weapon.key;
+        select.value = weapon.key;
+        resetHistory(`Load ${weapon.name}`);
+        frameModel();
+        refreshInspector();
+        setStatus(`Loaded ${weapon.name} — ${getParts().length} editable parts`);
+      } catch (error) {
+        setStatus(`Could not load ${weapon.name}: ${error.message}`);
+      } finally {
+        select.disabled = false;
+        button.disabled = false;
+      }
+    }
+
+    function frameModel() {
+      editorRoot.updateWorldMatrix(true, true);
+      const bounds = new THREE.Box3().setFromObject(editorRoot);
+      if (bounds.isEmpty()) return;
+      const center = bounds.getCenter(new THREE.Vector3());
+      const size = bounds.getSize(new THREE.Vector3());
+      const longestAxis = Math.max(size.x, size.y, size.z, 0.001);
+      const fitDistance = (longestAxis * 0.62) / Math.tan(THREE.MathUtils.degToRad(camera.fov * 0.5));
+      const direction = new THREE.Vector3(1.1, 0.35, 1.45).normalize();
+      camera.position.copy(center).addScaledVector(direction, fitDistance);
+      controls.target.copy(center);
+      controls.minDistance = Math.max(longestAxis * 0.008, 0.01);
+      controls.maxDistance = Math.max(longestAxis * 20, 40);
+      camera.near = Math.max(longestAxis / 10000, 0.001);
+      camera.far = Math.max(longestAxis * 100, 100);
+      camera.updateProjectionMatrix();
+      controls.update();
+    }
+
+    function resetHistory(label = 'Blank project') {
+      history = [];
+      historyIndex = -1;
+      snapshot(label);
+    }
+
+    function createBlankProject() {
+      selectPart(null);
+      editorRoot.clear();
+      partSerial = 1;
+      currentWeaponId = 'custom';
+      editorRoot.userData = {
+        forgeNeutralOuter: true,
+        forgeProjectName: 'Untitled Weapon',
+        forgeWeaponId: 'custom',
+        forgeCatalogKey: 'custom',
+        forgeSourcePath: ''
+      };
+      editorRoot.position.set(0, 0, 0);
+      editorRoot.rotation.set(0, 0, 0);
+      editorRoot.scale.set(1, 1, 1);
+      setOuterTransformMode(true);
+      camera.position.set(4.8, 2.8, 6.4);
+      controls.target.set(0, 0.25, 0);
+      controls.update();
+      resetHistory('Blank project');
+      refreshPartsList();
+      refreshInspector();
+      setStatus('Blank project created — add a Box or Cylinder to begin');
+    }
+
+    function cloneForHistory(source) {
+      const clone = source.clone(true);
+      clone.traverse((object) => {
+        if (!object.isMesh) return;
+        object.material = Array.isArray(object.material)
+          ? object.material.map((material) => material.clone())
+          : object.material.clone();
+      });
+      return clone;
+    }
+
+    function snapshot(label = 'Edit') {
+      if (restoringHistory) return;
+      const signature = JSON.stringify(editorRoot.toJSON());
+      if (history[historyIndex]?.signature === signature) return;
+      history = history.slice(0, historyIndex + 1);
+      history.push({ label, signature, model: cloneForHistory(editorRoot) });
+      if (history.length > 20) history.shift();
+      historyIndex = history.length - 1;
+    }
+
+    function restoreSnapshot(index) {
+      if (index < 0 || index >= history.length) return;
+      restoringHistory = true;
+      const loaded = cloneForHistory(history[index].model);
+      replaceEditorRoot(loaded);
+      historyIndex = index;
+      restoringHistory = false;
+      setStatus(`${history[index].label} restored`);
+    }
+
+    function undo() { restoreSnapshot(historyIndex - 1); }
+    function redo() { restoreSnapshot(historyIndex + 1); }
+
+    function setMode(mode) {
+      transformControls.setMode(mode);
+      ['translate', 'rotate', 'scale'].forEach((name) => {
+        document.getElementById(`${name}Btn`).classList.toggle('active', name === mode);
+      });
+      setStatus(`${mode[0].toUpperCase()}${mode.slice(1)} tool active`);
+    }
+
+    function beginGroupTransform() {
+      if (selectedParts.size < 2) return;
+      selectionProxy.updateMatrixWorld(true);
+      const parts = topLevelSelectedParts();
+      groupTransformState = {
+        proxyWorld: selectionProxy.matrixWorld.clone(),
+        parts: parts.map((part) => {
+          part.updateWorldMatrix(true, false);
+          return {
+            part,
+            parent: part.parent,
+            world: part.matrixWorld.clone()
+          };
+        })
+      };
+    }
+
+    function applyGroupTransform() {
+      if (!groupTransformState || updatingSelectionProxy) return;
+      selectionProxy.updateMatrixWorld(true);
+      const inverseStart = groupTransformState.proxyWorld.clone().invert();
+      const delta = selectionProxy.matrixWorld.clone().multiply(inverseStart);
+
+      for (const entry of groupTransformState.parts) {
+        if (!entry.part.parent || entry.part.parent !== entry.parent) continue;
+        entry.parent.updateWorldMatrix(true, false);
+        const localMatrix = entry.parent.matrixWorld.clone().invert()
+          .multiply(delta)
+          .multiply(entry.world);
+        localMatrix.decompose(entry.part.position, entry.part.quaternion, entry.part.scale);
+        entry.part.updateMatrix();
+        entry.part.updateMatrixWorld(true);
+      }
+    }
+
+    function finishGroupTransform() {
+      if (selectedParts.size < 2) return;
+      groupTransformState = null;
+      updateSelectionTransformTarget();
+    }
+
+    function applyInspectorTransform(recordHistory = true) {
+      if (!selectedPart || selectedParts.size !== 1) return;
+      selectedPart.position.set(
+        Number(ui.values.px.value), Number(ui.values.py.value), Number(ui.values.pz.value)
+      );
+      selectedPart.rotation.set(
+        THREE.MathUtils.degToRad(Number(ui.values.rx.value)),
+        THREE.MathUtils.degToRad(Number(ui.values.ry.value)),
+        THREE.MathUtils.degToRad(Number(ui.values.rz.value))
+      );
+      selectedPart.scale.set(
+        Number(ui.values.sx.value), Number(ui.values.sy.value), Number(ui.values.sz.value)
+      );
+      if (recordHistory) snapshot('Transform edit');
+    }
+
+    function addPrimitive(kind) {
+      const geometry = kind === 'box'
+        ? new THREE.BoxGeometry(0.5, 0.5, 0.5)
+        : new THREE.CylinderGeometry(0.2, 0.2, 0.7, 20);
+      if (kind === 'cylinder') geometry.rotateZ(Math.PI / 2);
+      const material = new THREE.MeshStandardMaterial({ color: 0x353b43, metalness: 0.72, roughness: 0.4 });
+      const part = new THREE.Mesh(geometry, material);
+      part.name = `${kind === 'box' ? 'Box' : 'Cylinder'} Part ${partSerial++}`;
+      part.userData.editorPart = true;
+      part.castShadow = true;
+      part.receiveShadow = true;
+      editorRoot.add(part);
+      selectPart(part);
+      snapshot(`Add ${kind}`);
+      refreshPartsList();
+    }
+
+    function duplicateSelected() {
+      const originals = topLevelSelectedParts();
+      if (!originals.length) return;
+      const duplicates = originals.map((original) => {
+        const duplicate = original.clone(true);
+        duplicate.traverse((object) => {
+          if (!object.isMesh) return;
+          object.material = Array.isArray(object.material)
+            ? object.material.map((material) => material.clone())
+            : object.material.clone();
+        });
+        duplicate.name = `${original.name} Copy`;
+        duplicate.position.x += 0.15;
+        original.parent.add(duplicate);
+        return duplicate;
+      });
+      selectPart(null);
+      duplicates.forEach((duplicate, index) => selectPart(duplicate, index > 0));
+      snapshot(duplicates.length === 1 ? 'Duplicate part' : `Duplicate ${duplicates.length} parts`);
+      refreshPartsList();
+    }
+
+    function deleteSelected() {
+      const removed = topLevelSelectedParts();
+      if (!removed.length) return;
+      const removedName = removed.length === 1 ? removed[0].name : `${removed.length} parts`;
+      selectPart(null);
+      removed.forEach((part) => part.parent?.remove(part));
+      snapshot(removed.length === 1 ? 'Delete part' : `Delete ${removed.length} parts`);
+      refreshPartsList();
+      setStatus(`Deleted ${removedName}`);
+    }
+
+    function downloadBlob(blob, filename) {
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = filename;
+      link.click();
+      setTimeout(() => URL.revokeObjectURL(url), 1000);
+    }
+
+    function projectFilename(extension) {
+      const fallback = EXISTING_WEAPONS[currentWeaponId]?.name || 'weapon';
+      const projectName = editorRoot.userData.forgeProjectName || fallback;
+      const slug = projectName.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') || 'weapon';
+      return `${slug}.${extension}`;
+    }
+
+    function saveProject() {
+      const data = JSON.stringify(editorRoot.toJSON(), null, 2);
+      localStorage.setItem(`dead-game-weapon-forge:${currentWeaponId}`, data);
+      downloadBlob(new Blob([data], { type: 'application/json' }), projectFilename('json'));
+      setStatus(`Saved ${editorRoot.userData.forgeProjectName || 'weapon'} as JSON`);
+    }
+
+    function loadProject(file) {
+      const reader = new FileReader();
+      reader.onload = () => {
+        try {
+          const loaded = new THREE.ObjectLoader().parse(JSON.parse(reader.result));
+          prepareEditableProject(loaded, {
+            key: loaded.userData.forgeCatalogKey || loaded.userData.forgeWeaponId || 'custom',
+            id: loaded.userData.forgeWeaponId || 'custom',
+            name: loaded.userData.forgeProjectName || file.name.replace(/\.json$/i, '')
+          });
+          replaceEditorRoot(loaded);
+          currentWeaponId = loaded.userData.forgeCatalogKey || loaded.userData.forgeWeaponId || 'custom';
+          if (EXISTING_WEAPONS[currentWeaponId]) {
+            document.getElementById('existingWeaponSelect').value = currentWeaponId;
+          }
+          resetHistory('Open project');
+          frameModel();
+          setStatus(`Opened ${file.name}`);
+        } catch (error) {
+          setStatus(`Could not open project: ${error.message}`);
+        }
+      };
+      reader.readAsText(file);
+    }
+
+    function prepareImportedHtmlModel(root, filename) {
+      let importedIndex = 1;
+
+      function branchContainsMesh(object) {
+        if (object.isMesh) return true;
+        return object.children.some(branchContainsMesh);
+      }
+
+      root.traverse((object) => {
+        if (!object.isMesh) return;
+        object.userData.editorPart = true;
+        object.castShadow = true;
+        object.receiveShadow = true;
+        if (!object.name || /^Mesh(?:\.\d+)?$/.test(object.name)) {
+          const parentName = object.parent?.name?.trim();
+          const typeName = object.geometry?.type?.replace('Geometry', '') || 'Mesh';
+          object.name = `${parentName ? `${parentName} ` : ''}${typeName} ${importedIndex++}`;
+        }
+      });
+
+      root.traverse((object) => {
+        for (let i = object.children.length - 1; i >= 0; i--) {
+          if (!branchContainsMesh(object.children[i])) object.remove(object.children[i]);
+        }
+      });
+
+      root.name = root.name || filename.replace(/\.(html?|HTML?)$/, '');
+      root.userData = {
+        ...root.userData,
+        forgeNeutralOuter: true,
+        forgeImportedFromHtml: filename,
+        forgeProjectName: root.userData.forgeProjectName || filename.replace(/\.(html?|HTML?)$/, ''),
+        forgeWeaponId: 'custom',
+        forgeCatalogKey: 'custom'
+      };
+      return root;
+    }
+
+    function buildHtmlImportDocument(source, token, filename) {
+      const declaredScenePattern = /\b(const|let|var)\s+([A-Za-z_$][\w$]*)\s*=\s*new\s+(?:THREE\.)?Scene\s*\(\s*\)\s*;?/;
+      const assignedScenePattern = /\b([A-Za-z_$][\w$]*)\s*=\s*new\s+(?:THREE\.)?Scene\s*\(\s*\)\s*;?/;
+      const scenePattern = declaredScenePattern.test(source)
+        ? declaredScenePattern
+        : assignedScenePattern;
+      if (!scenePattern.test(source)) {
+        throw new Error('No Three.js scene declaration was found. Forge currently imports standalone Three.js HTML models.');
+      }
+
+      let instrumented = source.replace(/<meta[^>]+http-equiv=["']Content-Security-Policy["'][^>]*>/gi, '');
+      if (scenePattern === declaredScenePattern) {
+        instrumented = instrumented.replace(scenePattern, (match, declaration, variableName) =>
+          `${declaration} ${variableName} = window.__forgeImportScene = ${match.slice(match.indexOf('new'))}`
+        );
+      } else {
+        instrumented = instrumented.replace(scenePattern, (match, variableName) =>
+          `${variableName} = window.__forgeImportScene = ${match.slice(match.indexOf('new'))}`
+        );
+      }
+
+      const bridgeOpen = '<scr' + 'ipt>';
+      const bridgeClose = '</scr' + 'ipt>';
+      const bridge = `${bridgeOpen}
+        (() => {
+          const token = ${JSON.stringify(token)};
+          const filename = ${JSON.stringify(filename)};
+          let attempts = 0;
+          let lastCount = -1;
+          let stablePasses = 0;
+
+          function countMeshes(root) {
+            let count = 0;
+            if (root && root.traverse) root.traverse((object) => { if (object.isMesh) count++; });
+            return count;
+          }
+
+          function inspect() {
+            attempts++;
+            const sourceScene = window.__forgeImportScene;
+            if (!sourceScene) {
+              if (attempts < 80) return setTimeout(inspect, 200);
+              parent.postMessage({ type: 'forge-html-import', token, error: 'The HTML ran, but its Three.js scene was not available.' }, '*');
+              return;
+            }
+
+            const candidates = Array.from(sourceScene.children || [])
+              .map((object) => ({ object, count: countMeshes(object) }))
+              .filter((candidate) => candidate.count > 0)
+              .sort((a, b) => b.count - a.count);
+            const totalCount = countMeshes(sourceScene);
+
+            if (totalCount === lastCount) stablePasses++;
+            else stablePasses = 0;
+            lastCount = totalCount;
+
+            if (totalCount > 0 && stablePasses >= 2) {
+              const candidate = candidates[0] && candidates[0].count > 1
+                ? candidates[0].object
+                : sourceScene;
+              try {
+                const transferable = candidate.clone(true);
+                transferable.traverse((object) => {
+                  object.userData = {};
+                  if (object.geometry) object.geometry.userData = {};
+                  const materials = Array.isArray(object.material) ? object.material : [object.material];
+                  materials.filter(Boolean).forEach((material) => { material.userData = {}; });
+                });
+                parent.postMessage({
+                  type: 'forge-html-import',
+                  token,
+                  filename,
+                  meshCount: countMeshes(transferable),
+                  json: transferable.toJSON()
+                }, '*');
+              } catch (error) {
+                parent.postMessage({ type: 'forge-html-import', token, error: error.message }, '*');
+              }
+              return;
+            }
+
+            if (attempts < 80) setTimeout(inspect, 200);
+            else parent.postMessage({ type: 'forge-html-import', token, error: 'No Three.js meshes appeared before the import timed out.' }, '*');
+          }
+
+          setTimeout(inspect, 200);
+        })();
+      ${bridgeClose}`;
+
+      if (/<\/body>/i.test(instrumented)) {
+        instrumented = instrumented.replace(/<\/body>/i, `${bridge}</body>`);
+      } else {
+        instrumented += bridge;
+      }
+      return instrumented;
+    }
+
+    function importHtmlSource(source, filename) {
+      const token = `${Date.now()}-${Math.random().toString(36).slice(2)}`;
+      const iframe = document.createElement('iframe');
+      iframe.setAttribute('sandbox', 'allow-scripts');
+      iframe.setAttribute('aria-hidden', 'true');
+      iframe.style.cssText = 'position:fixed;width:1px;height:1px;left:-10000px;top:-10000px;opacity:0;pointer-events:none';
+
+      return new Promise((resolve, reject) => {
+        let settled = false;
+        const cleanup = () => {
+          window.removeEventListener('message', onMessage);
+          iframe.remove();
+        };
+        const finish = (callback, value) => {
+          if (settled) return;
+          settled = true;
+          cleanup();
+          callback(value);
+        };
+        const onMessage = (event) => {
+          if (event.source !== iframe.contentWindow) return;
+          if (event.data?.type !== 'forge-html-import' || event.data.token !== token) return;
+          if (event.data.error) {
+            finish(reject, new Error(event.data.error));
+            return;
+          }
+          try {
+            const loaded = new THREE.ObjectLoader().parse(event.data.json);
+            finish(resolve, {
+              model: prepareImportedHtmlModel(loaded, filename),
+              meshCount: event.data.meshCount
+            });
+          } catch (error) {
+            finish(reject, error);
+          }
+        };
+
+        window.addEventListener('message', onMessage);
+        document.body.appendChild(iframe);
+        try {
+          iframe.srcdoc = buildHtmlImportDocument(source, token, filename);
+        } catch (error) {
+          finish(reject, error);
+          return;
+        }
+        setTimeout(() => finish(reject, new Error('HTML import timed out. Make sure the file is a standalone Three.js page and has internet access for its libraries.')), 18000);
+      });
+    }
+
+    function importHtmlFile(file) {
+      const reader = new FileReader();
+      reader.onload = async () => {
+        setStatus(`Importing ${file.name} in an isolated preview...`);
+        try {
+          const result = await importHtmlSource(String(reader.result), file.name);
+          replaceEditorRoot(result.model);
+          currentWeaponId = 'custom';
+          resetHistory('Import HTML model');
+          frameModel();
+          setStatus(`Imported ${result.meshCount} editable meshes from ${file.name}`);
+        } catch (error) {
+          setStatus(`HTML import failed: ${error.message}`);
+        }
+      };
+      reader.onerror = () => setStatus(`Could not read ${file.name}`);
+      reader.readAsText(file);
+    }
+
+    function exportGLB() {
+      setStatus('Building GLB export...');
+      new GLTFExporter().parse(
+        editorRoot,
+        (result) => {
+          downloadBlob(new Blob([result], { type: 'model/gltf-binary' }), projectFilename('glb'));
+          setStatus('GLB exported');
+        },
+        (error) => setStatus(`Export failed: ${error.message}`),
+        { binary: true, onlyVisible: true, trs: true }
+      );
+    }
+
+    renderer.domElement.addEventListener('pointerdown', (event) => {
+      pointerStart = { x: event.clientX, y: event.clientY };
+    });
+    renderer.domElement.addEventListener('pointerup', (event) => {
+      if (!pointerStart || transformControls.dragging) return;
+      const distance = Math.hypot(event.clientX - pointerStart.x, event.clientY - pointerStart.y);
+      pointerStart = null;
+      if (distance > 4 || transformControls.axis) return;
+      const rect = renderer.domElement.getBoundingClientRect();
+      pointer.x = ((event.clientX - rect.left) / rect.width) * 2 - 1;
+      pointer.y = -((event.clientY - rect.top) / rect.height) * 2 + 1;
+      raycaster.setFromCamera(pointer, camera);
+      const hit = raycaster.intersectObjects(editorRoot.children, true)
+        .find((entry) => entry.object.userData.editorPart);
+      if (hit?.object) selectPart(hit.object, event.shiftKey);
+      else if (!event.shiftKey) selectPart(null);
+    });
+
+    transformControls.addEventListener('mouseDown', () => {
+      snapshot('Before transform');
+      beginGroupTransform();
+    });
+    transformControls.addEventListener('mouseUp', () => {
+      finishGroupTransform();
+      refreshInspector();
+      snapshot(selectedParts.size > 1 ? 'Transform parts' : 'Transform part');
+      refreshPartsList();
+    });
+    transformControls.addEventListener('change', () => {
+      applyGroupTransform();
+      refreshInspector();
+    });
+
+    ui.search.addEventListener('input', refreshPartsList);
+    ui.name.addEventListener('change', () => {
+      if (!selectedPart || selectedParts.size !== 1) return;
+      selectedPart.name = ui.name.value.trim() || selectedPart.name;
+      snapshot('Rename part');
+      refreshPartsList();
+    });
+    Object.values(ui.values).forEach((input) => {
+      input.addEventListener('input', () => applyInspectorTransform(true));
+    });
+    ui.color.addEventListener('input', () => {
+      if (!selectedParts.size) return;
+      for (const part of selectedParts) {
+        if (!part.userData.editorMaterialOwned) {
+          part.material = Array.isArray(part.material)
+            ? part.material.map((material) => material.clone())
+            : part.material.clone();
+          part.userData.editorMaterialOwned = true;
+        }
+        const materials = Array.isArray(part.material) ? part.material : [part.material];
+        materials.forEach((material) => material.color?.set(ui.color.value));
+      }
+      refreshPartsList();
+    });
+    ui.color.addEventListener('change', () => snapshot(selectedParts.size > 1 ? 'Change part colors' : 'Change color'));
+
+    document.getElementById('translateBtn').addEventListener('click', () => setMode('translate'));
+    document.getElementById('rotateBtn').addEventListener('click', () => setMode('rotate'));
+    document.getElementById('scaleBtn').addEventListener('click', () => setMode('scale'));
+    document.getElementById('undoBtn').addEventListener('click', undo);
+    document.getElementById('redoBtn').addEventListener('click', redo);
+    document.getElementById('addBoxBtn').addEventListener('click', () => addPrimitive('box'));
+    document.getElementById('addCylinderBtn').addEventListener('click', () => addPrimitive('cylinder'));
+    document.getElementById('duplicateBtn').addEventListener('click', duplicateSelected);
+    document.getElementById('deleteBtn').addEventListener('click', deleteSelected);
+    document.getElementById('visibilityBtn').addEventListener('click', () => {
+      if (!selectedParts.size) return;
+      const makeVisible = selectedPartArray().some((part) => !part.visible);
+      selectedParts.forEach((part) => { part.visible = makeVisible; });
+      snapshot(selectedParts.size > 1 ? 'Toggle part visibility' : 'Toggle visibility');
+    });
+    document.getElementById('editorResetBtn').addEventListener('click', () => {
+      frameModel();
+      setStatus('Model framed — scroll to zoom closer');
+    });
+    document.getElementById('editorFireBtn').addEventListener('click', triggerFire);
+    document.getElementById('loadExistingWeaponBtn').addEventListener('click', () => {
+      loadExistingWeapon(document.getElementById('existingWeaponSelect').value);
+    });
+    document.getElementById('refreshWeaponFolderBtn').addEventListener('click', () => discoverSourceWeapons(true));
+    document.getElementById('normalizeForGameBtn').addEventListener('click', normalizeCurrentProjectForGame);
+    document.getElementById('newBtn').addEventListener('click', createBlankProject);
+    document.getElementById('saveBtn').addEventListener('click', saveProject);
+    document.getElementById('loadBtn').addEventListener('click', () => document.getElementById('fileInput').click());
+    document.getElementById('importHtmlBtn').addEventListener('click', () => document.getElementById('htmlFileInput').click());
+    document.getElementById('fileInput').addEventListener('change', (event) => {
+      if (event.target.files[0]) loadProject(event.target.files[0]);
+      event.target.value = '';
+    });
+    document.getElementById('htmlFileInput').addEventListener('change', (event) => {
+      if (event.target.files[0]) importHtmlFile(event.target.files[0]);
+      event.target.value = '';
+    });
+    document.getElementById('exportBtn').addEventListener('click', exportGLB);
+
+    window.addEventListener('keydown', (event) => {
+      if (/INPUT|TEXTAREA|SELECT/.test(document.activeElement?.tagName)) return;
+      if (event.ctrlKey && event.key.toLowerCase() === 'z') { event.preventDefault(); undo(); return; }
+      if (event.ctrlKey && event.key.toLowerCase() === 'y') { event.preventDefault(); redo(); return; }
+      if (event.key.toLowerCase() === 'w') setMode('translate');
+      if (event.key.toLowerCase() === 'e') setMode('rotate');
+      if (event.key.toLowerCase() === 'r') setMode('scale');
+      if (event.key === 'Escape') selectPart(null);
+      if (event.key === 'Delete' || event.key === 'Backspace') deleteSelected();
+    });
+
+    movingParts.mag.name = 'Magazine';
+    movingParts.trigger.name = 'Trigger';
+    movingParts.bolt.name = 'Bolt';
+    movingParts.casing.name = 'Ejected Casing';
+    snapshot('Initial rifle');
+    refreshPartsList();
+    refreshInspector();
+
+    const startupParams = new URLSearchParams(window.location.search);
+    const automaticWeapon = startupParams.get('weapon');
+    const automaticHtmlImport = startupParams.get('importHtml');
+    discoverSourceWeapons().then(() => {
+      const automaticWeaponKey = EXISTING_WEAPONS[automaticWeapon]
+        ? automaticWeapon
+        : EXISTING_WEAPONS[`game:${automaticWeapon}`]
+          ? `game:${automaticWeapon}`
+          : automaticWeapon && EXISTING_WEAPONS[sourceWeaponKey(automaticWeapon)]
+            ? sourceWeaponKey(automaticWeapon)
+            : null;
+      if (automaticWeaponKey) {
+        loadExistingWeapon(automaticWeaponKey);
+      } else if (!automaticHtmlImport) {
+        loadExistingWeapon('game:rifle');
+      }
+    });
+    if (location.protocol !== 'file:') {
+      setInterval(() => discoverSourceWeapons(false), 4000);
+    }
+
+    if (automaticHtmlImport) {
+      fetch(automaticHtmlImport)
+        .then((response) => {
+          if (!response.ok) throw new Error(`HTTP ${response.status}`);
+          return response.text();
+        })
+        .then(async (source) => {
+          const filename = automaticHtmlImport.split('/').pop() || 'model.html';
+          setStatus(`Importing ${filename}...`);
+          const result = await importHtmlSource(source, filename);
+          replaceEditorRoot(result.model);
+          currentWeaponId = 'custom';
+          resetHistory('Import HTML model');
+          frameModel();
+          setStatus(`Imported ${result.meshCount} editable meshes from ${filename}`);
+        })
+        .catch((error) => setStatus(`HTML import failed: ${error.message}`));
+    }
+
+    const clock = new THREE.Clock();
+
+    const fireState = {
+      active: false,
+      start: 0,
+      duration: 0.56,
+      cooldown: 0,
+    };
+
+    let inspectMode = false;
+    let autoOrbitAngle = 0;
+
+    function smoothstep(t) {
+      return t * t * (3 - 2 * t);
+    }
+
+    function easeOutExpo(t) {
+      return t === 1 ? 1 : 1 - Math.pow(2, -10 * t);
+    }
+
+    function triggerFire() {
+      const now = performance.now() * 0.001;
+      if (fireState.active || fireState.cooldown > now) return;
+      fireState.active = true;
+      fireState.start = now;
+      fireState.cooldown = now + 0.12;
+      reticle.classList.add('active');
+      setTimeout(() => reticle.classList.remove('active'), 170);
+    }
+
+    fireBtn.addEventListener('click', triggerFire);
+    resetBtn.addEventListener('click', () => {
+      camera.position.copy(defaultCameraPos);
+      controls.target.copy(defaultTarget);
+      controls.update();
+    });
+    inspectToggle.addEventListener('change', (e) => {
+      inspectMode = e.target.checked;
+    });
+
+    window.addEventListener('keydown', (e) => {
+      if (e.code === 'Space') {
+        e.preventDefault();
+        triggerFire();
+      }
+    });
+
+    function updateFireAnimation(time, dt) {
+      const t = fireState.active ? (time - fireState.start) / fireState.duration : 2;
+      const trigger = movingParts.trigger;
+      const bolt = movingParts.bolt;
+      const recoilGroup = movingParts.recoilGroup;
+      const muzzleFlash = movingParts.muzzleFlash;
+      const casing = movingParts.casing;
+      const casingTrail = movingParts.casingTrail;
+
+      if (!fireState.active) {
+        trigger.rotation.z += (-0.22 - trigger.rotation.z) * 0.18;
+        bolt.position.x += (0.2 - bolt.position.x) * 0.2;
+        recoilGroup.position.x += (0 - recoilGroup.position.x) * 0.16;
+        recoilGroup.rotation.z += (-0.0 - recoilGroup.rotation.z) * 0.16;
+        recoilGroup.rotation.y += (0 - recoilGroup.rotation.y) * 0.16;
+        muzzleFlash.visible = false;
+        movingParts.smoke.forEach((p) => { p.visible = false; p.material.opacity *= 0.9; });
+        casing.visible = false;
+        casingTrail.visible = false;
+        return;
+      }
+
+      const p = Math.min(Math.max(t, 0), 1);
+      const snap = Math.sin(Math.min(p * 1.2, 1) * Math.PI);
+      const recoil = Math.exp(-p * 10) * Math.sin(p * 18);
+      const boltKick = Math.sin(Math.min(p * 2.4, 1) * Math.PI);
+
+      trigger.rotation.z = -0.22 - 0.18 * smoothstep(Math.min(p * 4, 1));
+      bolt.position.x = 0.2 - 0.28 * boltKick * (1 - p * 0.3);
+      recoilGroup.position.x = 0.14 * recoil;
+      recoilGroup.position.y = 0.02 * Math.abs(recoil);
+      recoilGroup.rotation.z = -0.025 * recoil;
+      recoilGroup.rotation.y = 0.035 * recoil;
+      movingParts.mag.rotation.z = 0.015 * recoil;
+
+      const flashWindow = p < 0.13;
+      muzzleFlash.visible = flashWindow;
+      if (flashWindow) {
+        const fp = p / 0.13;
+        const intensity = 1 - fp;
+        muzzleFlash.userData.core.material.opacity = 0.95 * intensity;
+        muzzleFlash.userData.bloom.material.opacity = 0.55 * intensity;
+        const s = 1 + 1.8 * easeOutExpo(fp);
+        muzzleFlash.scale.set(1.2 + s, 0.9 + s * 0.25, 0.9 + s * 0.25);
+        muzzleFlash.rotation.x += dt * 10;
+        muzzleFlash.rotation.y += dt * 14;
+      }
+
+      movingParts.smoke.forEach((puff, i) => {
+        const localT = (p - 0.02 * i) / 0.42;
+        if (localT > 0 && localT < 1) {
+          puff.visible = true;
+          puff.material.opacity = 0.22 * (1 - localT);
+          puff.position.set(-3.56 - localT * (0.42 + i * 0.06), 0.28 + 0.06 * i + localT * 0.24, (i - 2) * 0.05);
+          const scale = 1 + localT * (1.7 + i * 0.25);
+          puff.scale.setScalar(scale);
+        } else if (localT >= 1) {
+          puff.visible = false;
+        }
+      });
+
+      const caseT = (p - 0.05) / 0.42;
+      if (caseT > 0 && caseT < 1) {
+        casing.visible = true;
+        casingTrail.visible = true;
+        const x = 0.22 + caseT * 0.32;
+        const y = 0.3 + Math.sin(caseT * Math.PI) * 0.24;
+        const z = 0.34 + caseT * 0.7;
+        casing.position.set(x, y, z);
+        casing.rotation.x += dt * 18;
+        casing.rotation.y += dt * 11;
+        casing.rotation.z += dt * 20;
+        casingTrail.position.set(x - 0.04, y - 0.02, z - 0.08);
+        casingTrail.material.opacity = 0.18 * (1 - caseT);
+      } else {
+        casing.visible = false;
+        casingTrail.visible = false;
+      }
+
+      if (p >= 1) {
+        fireState.active = false;
+      }
+    }
+
+    function animate() {
+      const dt = Math.min(clock.getDelta(), 0.033);
+      const time = performance.now() * 0.001;
+
+      if (inspectMode) {
+        autoOrbitAngle += dt * 0.28;
+        world.rotation.y += dt * 0.22;
+      }
+
+      updateFireAnimation(time, dt);
+      controls.update();
+      renderer.render(scene, camera);
+      requestAnimationFrame(animate);
+    }
+
+    animate();
+
+    function resizeEditor() {
+      const width = Math.max(sceneHost.clientWidth, 1);
+      const height = Math.max(sceneHost.clientHeight, 1);
+      camera.aspect = width / height;
+      camera.updateProjectionMatrix();
+      renderer.setSize(width, height);
+      renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+    }
+    window.addEventListener('resize', resizeEditor);
+    resizeEditor();
+  </script>
+</body>
+</html>
