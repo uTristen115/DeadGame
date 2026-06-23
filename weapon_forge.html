@@ -360,20 +360,10 @@
     </div>
     <div class="toolbar-group">
       <select id="existingWeaponSelect" class="weapon-picker" aria-label="Existing weapon">
-        <optgroup label="Weapons used in game">
-          <option value="game:pistol">1 — Field Pistol</option>
-          <option value="game:smg">2 — Mill SMG</option>
-          <option value="game:shotgun">3 — Trench Shotgun</option>
-          <option value="game:revolver">4 — Rust Revolver</option>
-          <option value="game:carbine">5 — Hunting Carbine</option>
-          <option value="game:rifle" selected>6 — Service Rifle</option>
-          <option value="game:lmg">7 — Belt Fed</option>
-        </optgroup>
-        <optgroup id="sourceWeaponOptions" label="Source models in gunshtml"></optgroup>
+        <optgroup id="existingWeaponOptions" label="Weapon folders"></optgroup>
       </select>
-      <button id="loadExistingWeaponBtn" class="tool-btn active">Load Weapon</button>
-      <button id="refreshWeaponFolderBtn" class="tool-btn" title="Scan gunshtml for newly added JSON models">Refresh Folder</button>
-      <button id="normalizeForGameBtn" class="tool-btn" title="Match this model to the selected in-game weapon size">Normalize for Game</button>
+      <button id="loadExistingWeaponBtn" class="tool-btn active">Load Slot</button>
+      <button id="normalizeForGameBtn" class="tool-btn" title="Match this model to the selected weapon slot size">Normalize to Slot</button>
     </div>
     <div class="toolbar-group">
       <button id="translateBtn" class="tool-btn active" title="Move (W)">↔ <span class="toolbar-label">Move</span></button>
@@ -392,7 +382,8 @@
       <button id="newBtn" class="tool-btn">New Blank</button>
       <button id="loadBtn" class="tool-btn">Open Project</button>
       <button id="importHtmlBtn" class="tool-btn">Import HTML</button>
-      <button id="saveBtn" class="tool-btn">Save Project</button>
+      <button id="saveBtn" class="tool-btn">Save to Game</button>
+      <button id="downloadJsonBtn" class="tool-btn">Download JSON</button>
       <button id="exportBtn" class="tool-btn active">Export GLB</button>
       <input id="fileInput" type="file" accept=".json,application/json" hidden />
       <input id="htmlFileInput" type="file" accept=".html,.htm,text/html" hidden />
@@ -438,14 +429,14 @@
       <div class="section-title">Quick help</div>
       <div style="font-size:11px;line-height:1.7;color:#8291a3">
         Click a part to select it. Drag the colored gizmo to edit.<br><br>
-        <b style="color:#cbd5e1">W</b> move · <b style="color:#cbd5e1">E</b> rotate · <b style="color:#cbd5e1">R</b> scale · <b style="color:#cbd5e1">Del</b> delete
+        <b style="color:#cbd5e1">W</b> move | <b style="color:#cbd5e1">E</b> rotate | <b style="color:#cbd5e1">R</b> scale | <b style="color:#cbd5e1">Del</b> delete
       </div>
     </section>
   </aside>
 
   <footer class="statusbar editor-panel">
-    <span id="statusText">Ready — click a model part to begin</span>
-    <span>Orbit: drag empty space · Zoom: wheel</span>
+    <span id="statusText">Ready - click a model part to begin</span>
+    <span>Orbit: drag empty space | Zoom: wheel</span>
   </footer>
 
   <script src="gunshtml/weapon-model-catalog.js"></script>
@@ -915,65 +906,72 @@
       }
     };
 
-    const EXISTING_WEAPONS = {
-      'game:pistol': {
-        key: 'game:pistol',
-        id: 'pistol',
-        name: 'Field Pistol',
-        sourceName: 'Game weapon slot 1',
-        source: 'game'
-      },
-      'game:smg': {
-        key: 'game:smg',
-        id: 'smg',
-        name: 'Mill SMG',
-        sourceName: 'Game weapon slot 2',
-        source: 'game'
-      },
-      'game:shotgun': {
-        key: 'game:shotgun',
-        id: 'shotgun',
-        name: 'Trench Shotgun',
-        sourceName: 'Game weapon slot 3',
-        source: 'game'
-      },
-      'game:revolver': {
-        key: 'game:revolver',
-        id: 'revolver',
-        name: 'Rust Revolver',
-        sourceName: 'Game weapon slot 4',
-        source: 'game'
-      },
-      'game:carbine': {
-        key: 'game:carbine',
-        id: 'carbine',
-        name: 'Hunting Carbine',
-        sourceName: 'Game weapon slot 5',
-        source: 'game'
-      },
-      'game:rifle': {
-        key: 'game:rifle',
-        id: 'rifle',
-        name: 'Service Rifle',
-        sourceName: 'Game weapon slot 6',
-        source: 'game'
-      },
-      'game:lmg': {
-        key: 'game:lmg',
-        id: 'lmg',
-        name: 'Belt Fed',
-        sourceName: 'Game weapon slot 7',
-        source: 'game'
+    const DEFAULT_WEAPON_SLOTS = [
+      { id: 'pistol', slot: '1', name: 'Field Pistol', folder: 'pistol' },
+      { id: 'smg', slot: '2', name: 'Mill SMG', folder: 'smg' },
+      { id: 'shotgun', slot: '3', name: 'Trench Shotgun', folder: 'shotgun' },
+      { id: 'revolver', slot: '4', name: 'Rust Revolver', folder: 'revolver' },
+      { id: 'carbine', slot: '5', name: 'Hunting Carbine', folder: 'carbine' },
+      { id: 'rifle', slot: '6', name: 'Service Rifle', folder: 'rifle' },
+      { id: 'lmg', slot: '7', name: 'Belt Fed', folder: 'lmg' }
+    ];
+
+    function normalizeWeaponId(id) {
+      return String(id || '').replace(/^game:/i, '').toLowerCase()
+        .replace(/[^a-z0-9_]+/g, '_').replace(/^_+|_+$/g, '');
+    }
+
+    function buildExistingWeapons() {
+      const slots = Array.isArray(window.DEAD_GAME_WEAPON_SLOTS) && window.DEAD_GAME_WEAPON_SLOTS.length
+        ? window.DEAD_GAME_WEAPON_SLOTS
+        : DEFAULT_WEAPON_SLOTS;
+      const weapons = {};
+      slots.forEach((slot, index) => {
+        const id = normalizeWeaponId(slot.id || slot.folder);
+        if (!id) return;
+        const folder = slot.folder || id;
+        const key = `game:${id}`;
+        const modelPath = slot.modelPath || slot.path || `weapons/${folder}/usemodel.json`;
+        weapons[key] = {
+          key,
+          id,
+          folder,
+          slot: String(slot.slot || index + 1),
+          name: slot.name || id.replace(/_/g, ' ').replace(/\b\w/g, (letter) => letter.toUpperCase()),
+          sourceName: `Weapon folder ${folder}`,
+          source: 'game',
+          modelPath,
+          path: `gunshtml/${modelPath}`
+        };
+      });
+      return weapons;
+    }
+
+    const EXISTING_WEAPONS = buildExistingWeapons();
+
+    function firstWeaponKey() {
+      return Object.keys(EXISTING_WEAPONS)[0] || 'game:weapon';
+    }
+
+    function defaultWeaponKey() {
+      return EXISTING_WEAPONS['game:rifle'] ? 'game:rifle' : firstWeaponKey();
+    }
+
+    function renderExistingWeaponOptions() {
+      const group = document.getElementById('existingWeaponOptions');
+      group.replaceChildren();
+      for (const weapon of Object.values(EXISTING_WEAPONS)) {
+        const option = document.createElement('option');
+        option.value = weapon.key;
+        option.textContent = `${weapon.slot} - ${weapon.name}`;
+        group.appendChild(option);
       }
-    };
-    const KNOWN_SOURCE_WEAPON_IDS = {
-      '1911handgunmodel.json': 'pistol',
-      'minismg.json': 'smg',
-      'm4riflemodel.json': 'rifle',
-      'semiautorifle.json': 'carbine'
-    };
+    }
+    renderExistingWeaponOptions();
+    const LIVE_WEAPON_STORAGE_PREFIX = 'dead-game-weapon-model:';
     const EDITOR_WORKING_SIZE = 4.8;
-    let currentWeaponId = 'game:rifle';
+    let currentWeaponId = defaultWeaponKey();
+    document.getElementById('existingWeaponSelect').value = currentWeaponId;
     let gameWeaponCatalogPromise = null;
 
     const raycaster = new THREE.Raycaster();
@@ -1003,86 +1001,17 @@
       ui.status.textContent = message;
     }
 
-    function sourceDisplayName(filename) {
-      return filename.replace(/\.json$/i, '')
-        .replace(/[_-]+/g, ' ')
-        .replace(/([a-z])([A-Z])/g, '$1 $2')
-        .replace(/\b\w/g, (letter) => letter.toUpperCase());
+    function gameWeaponStorageKey(id) {
+      return LIVE_WEAPON_STORAGE_PREFIX + id;
     }
 
-    function sourceWeaponKey(filename) {
-      return `source-file:${encodeURIComponent(filename)}`;
-    }
-
-    function registerSourceWeapon(file) {
-      const filename = String(file.filename || '').split('/').pop();
-      if (!filename || !/\.json$/i.test(filename)) return null;
-      const key = sourceWeaponKey(filename);
-      EXISTING_WEAPONS[key] = {
-        key,
-        id: file.weaponId || KNOWN_SOURCE_WEAPON_IDS[filename.toLowerCase()] || null,
-        name: file.name || sourceDisplayName(filename),
-        sourceName: filename,
-        source: 'folder',
-        filename,
-        path: `gunshtml/${encodeURIComponent(filename)}`
-      };
-      return key;
-    }
-
-    function renderSourceWeaponOptions() {
-      const group = document.getElementById('sourceWeaponOptions');
-      const previousValue = document.getElementById('existingWeaponSelect').value;
-      const sources = Object.values(EXISTING_WEAPONS)
-        .filter((weapon) => weapon.source === 'folder')
-        .sort((a, b) => a.name.localeCompare(b.name));
-      group.replaceChildren();
-      for (const weapon of sources) {
-        const option = document.createElement('option');
-        option.value = weapon.key;
-        option.textContent = weapon.name;
-        group.appendChild(option);
+    function readSavedGameWeaponProject(id) {
+      try {
+        const raw = localStorage.getItem(gameWeaponStorageKey(id));
+        return raw ? JSON.parse(raw) : null;
+      } catch {
+        return null;
       }
-      if (EXISTING_WEAPONS[previousValue]) {
-        document.getElementById('existingWeaponSelect').value = previousValue;
-      }
-      group.label = `Source models in gunshtml (${sources.length})`;
-      return sources.length;
-    }
-
-    async function discoverSourceWeapons(showStatus = false) {
-      const bundledFiles = window.DEAD_GAME_SOURCE_WEAPON_FILES || [];
-      bundledFiles.forEach(registerSourceWeapon);
-      let discoveredFromServer = 0;
-
-      if (location.protocol !== 'file:') {
-        try {
-          const response = await fetch(`gunshtml/?cacheBust=${Date.now()}`, { cache: 'no-store' });
-          if (!response.ok) throw new Error(`HTTP ${response.status}`);
-          const documentIndex = new DOMParser().parseFromString(await response.text(), 'text/html');
-          const filenames = Array.from(documentIndex.querySelectorAll('a[href]'))
-            .map((anchor) => {
-              try {
-                return decodeURIComponent(new URL(anchor.getAttribute('href'), response.url).pathname.split('/').pop());
-              } catch {
-                return '';
-              }
-            })
-            .filter((filename) => /\.json$/i.test(filename));
-          for (const filename of new Set(filenames)) {
-            if (registerSourceWeapon({ filename })) discoveredFromServer++;
-          }
-        } catch (error) {
-          if (showStatus) setStatus(`Folder scan unavailable: ${error.message}`);
-        }
-      }
-
-      const count = renderSourceWeaponOptions();
-      if (showStatus) {
-        const mode = location.protocol === 'file:' ? 'bundled catalog' : 'gunshtml scan';
-        setStatus(`Found ${count} source weapon model${count === 1 ? '' : 's'} via ${mode}`);
-      }
-      return { count, discoveredFromServer };
     }
 
     function setFieldState(enabled, colorEnabled = enabled) {
@@ -1244,7 +1173,7 @@
       let targetLongestAxis = sourceMeasurement.longestAxis;
       let scaleFactor = 1;
 
-      if (weapon.source === 'folder' && weapon.id) {
+      if (weapon.id) {
         const gameModels = await loadGameWeaponCatalog();
         const referenceData = gameModels[weapon.id];
         if (!referenceData) throw new Error(`No in-game ${weapon.id} reference exists for normalization`);
@@ -1432,26 +1361,11 @@
       setStatus(`Loading ${weapon.name} (${weapon.sourceName})...`);
 
       try {
-        let projectData = null;
-        if (weapon.source === 'game') {
+        let projectData = readSavedGameWeaponProject(weapon.id);
+        if (!projectData) {
           const gameModels = await loadGameWeaponCatalog();
           projectData = gameModels[weapon.id];
           if (!projectData) throw new Error(`The game did not expose a ${weapon.id} model`);
-        } else {
-          const bundledData = window.DEAD_GAME_WEAPON_MODELS_BY_FILE?.[weapon.filename];
-          if (location.protocol === 'file:') {
-            if (!bundledData) throw new Error('The local weapon catalog is missing this model');
-            projectData = bundledData;
-          } else {
-            try {
-              const response = await fetch(weapon.path, { cache: 'no-store' });
-              if (!response.ok) throw new Error(`HTTP ${response.status}`);
-              projectData = await response.json();
-            } catch (fetchError) {
-              if (!bundledData) throw fetchError;
-              projectData = bundledData;
-            }
-          }
         }
 
         const loaded = new THREE.ObjectLoader().parse(projectData);
@@ -1501,13 +1415,14 @@
       selectPart(null);
       editorRoot.clear();
       partSerial = 1;
-      currentWeaponId = 'custom';
+      currentWeaponId = document.getElementById('existingWeaponSelect').value || defaultWeaponKey();
+      const weapon = EXISTING_WEAPONS[currentWeaponId] || EXISTING_WEAPONS[defaultWeaponKey()];
       editorRoot.userData = {
         forgeNeutralOuter: true,
-        forgeProjectName: 'Untitled Weapon',
-        forgeWeaponId: 'custom',
-        forgeCatalogKey: 'custom',
-        forgeSourcePath: ''
+        forgeProjectName: weapon.name,
+        forgeWeaponId: weapon.id,
+        forgeCatalogKey: weapon.key,
+        forgeSourcePath: weapon.path
       };
       editorRoot.position.set(0, 0, 0);
       editorRoot.rotation.set(0, 0, 0);
@@ -1687,11 +1602,61 @@
       return `${slug}.${extension}`;
     }
 
+    function prepareProjectForSelectedGameSlot() {
+      const weapon = EXISTING_WEAPONS[currentWeaponId];
+      if (!weapon?.id) throw new Error('Select a game weapon slot before saving');
+      editorRoot.userData = {
+        ...editorRoot.userData,
+        forgeGameReady: true,
+        forgeNeutralOuter: editorRoot.userData.forgeNeutralOuter ?? true,
+        forgeProjectName: weapon.name,
+        forgeWeaponId: weapon.id,
+        forgeCatalogKey: weapon.key,
+        forgeSourcePath: weapon.path,
+        forgeGameModelPath: weapon.modelPath
+      };
+      return weapon;
+    }
+
+    function projectJson() {
+      prepareProjectForSelectedGameSlot();
+      return JSON.stringify(editorRoot.toJSON(), null, 2);
+    }
+
     function saveProject() {
-      const data = JSON.stringify(editorRoot.toJSON(), null, 2);
-      localStorage.setItem(`dead-game-weapon-forge:${currentWeaponId}`, data);
-      downloadBlob(new Blob([data], { type: 'application/json' }), projectFilename('json'));
-      setStatus(`Saved ${editorRoot.userData.forgeProjectName || 'weapon'} as JSON`);
+      let weapon;
+      let data;
+      try {
+        weapon = prepareProjectForSelectedGameSlot();
+        data = JSON.stringify(editorRoot.toJSON(), null, 2);
+        localStorage.setItem(gameWeaponStorageKey(weapon.id), data);
+        localStorage.setItem(`dead-game-weapon-forge:${weapon.key}`, data);
+        setStatus(`Saved ${weapon.name} to game. Open game tabs update automatically.`);
+      } catch (error) {
+        setStatus(`Could not save to game: ${error.message}`);
+      }
+    }
+
+    function downloadProjectJson() {
+      let data;
+      try {
+        data = projectJson();
+      } catch (error) {
+        setStatus(`Could not prepare JSON: ${error.message}`);
+        return;
+      }
+      downloadBlob(new Blob([data], { type: 'application/json' }), 'usemodel.json');
+      const weapon = EXISTING_WEAPONS[currentWeaponId];
+      const target = weapon ? `gunshtml/${weapon.modelPath}` : projectFilename('json');
+      setStatus(`Downloaded JSON. Put it at ${target} and rebuild the catalog to make it permanent.`);
+    }
+
+    function weaponKeyFromProjectUserData(userData) {
+      const catalogKey = userData?.forgeCatalogKey;
+      const weaponId = userData?.forgeWeaponId;
+      if (catalogKey && EXISTING_WEAPONS[catalogKey]) return catalogKey;
+      if (weaponId && EXISTING_WEAPONS[`game:${weaponId}`]) return `game:${weaponId}`;
+      return defaultWeaponKey();
     }
 
     function loadProject(file) {
@@ -1699,16 +1664,17 @@
       reader.onload = () => {
         try {
           const loaded = new THREE.ObjectLoader().parse(JSON.parse(reader.result));
+          const key = weaponKeyFromProjectUserData(loaded.userData);
+          const weapon = EXISTING_WEAPONS[key];
           prepareEditableProject(loaded, {
-            key: loaded.userData.forgeCatalogKey || loaded.userData.forgeWeaponId || 'custom',
-            id: loaded.userData.forgeWeaponId || 'custom',
-            name: loaded.userData.forgeProjectName || file.name.replace(/\.json$/i, '')
+            key,
+            id: weapon.id,
+            name: loaded.userData.forgeProjectName || weapon.name || file.name.replace(/\.json$/i, ''),
+            path: weapon.path
           });
           replaceEditorRoot(loaded);
-          currentWeaponId = loaded.userData.forgeCatalogKey || loaded.userData.forgeWeaponId || 'custom';
-          if (EXISTING_WEAPONS[currentWeaponId]) {
-            document.getElementById('existingWeaponSelect').value = currentWeaponId;
-          }
+          currentWeaponId = key;
+          document.getElementById('existingWeaponSelect').value = currentWeaponId;
           resetHistory('Open project');
           frameModel();
           setStatus(`Opened ${file.name}`);
@@ -1910,7 +1876,7 @@
         try {
           const result = await importHtmlSource(String(reader.result), file.name);
           replaceEditorRoot(result.model);
-          currentWeaponId = 'custom';
+          currentWeaponId = document.getElementById('existingWeaponSelect').value || defaultWeaponKey();
           resetHistory('Import HTML model');
           frameModel();
           setStatus(`Imported ${result.meshCount} editable meshes from ${file.name}`);
@@ -2017,10 +1983,10 @@
     document.getElementById('loadExistingWeaponBtn').addEventListener('click', () => {
       loadExistingWeapon(document.getElementById('existingWeaponSelect').value);
     });
-    document.getElementById('refreshWeaponFolderBtn').addEventListener('click', () => discoverSourceWeapons(true));
     document.getElementById('normalizeForGameBtn').addEventListener('click', normalizeCurrentProjectForGame);
     document.getElementById('newBtn').addEventListener('click', createBlankProject);
     document.getElementById('saveBtn').addEventListener('click', saveProject);
+    document.getElementById('downloadJsonBtn').addEventListener('click', downloadProjectJson);
     document.getElementById('loadBtn').addEventListener('click', () => document.getElementById('fileInput').click());
     document.getElementById('importHtmlBtn').addEventListener('click', () => document.getElementById('htmlFileInput').click());
     document.getElementById('fileInput').addEventListener('change', (event) => {
@@ -2055,22 +2021,16 @@
     const startupParams = new URLSearchParams(window.location.search);
     const automaticWeapon = startupParams.get('weapon');
     const automaticHtmlImport = startupParams.get('importHtml');
-    discoverSourceWeapons().then(() => {
-      const automaticWeaponKey = EXISTING_WEAPONS[automaticWeapon]
-        ? automaticWeapon
-        : EXISTING_WEAPONS[`game:${automaticWeapon}`]
-          ? `game:${automaticWeapon}`
-          : automaticWeapon && EXISTING_WEAPONS[sourceWeaponKey(automaticWeapon)]
-            ? sourceWeaponKey(automaticWeapon)
-            : null;
-      if (automaticWeaponKey) {
-        loadExistingWeapon(automaticWeaponKey);
-      } else if (!automaticHtmlImport) {
-        loadExistingWeapon('game:rifle');
-      }
-    });
-    if (location.protocol !== 'file:') {
-      setInterval(() => discoverSourceWeapons(false), 4000);
+    const normalizedAutomaticWeapon = normalizeWeaponId(automaticWeapon);
+    const automaticWeaponKey = EXISTING_WEAPONS[automaticWeapon]
+      ? automaticWeapon
+      : EXISTING_WEAPONS[`game:${normalizedAutomaticWeapon}`]
+        ? `game:${normalizedAutomaticWeapon}`
+        : null;
+    if (automaticWeaponKey) {
+      loadExistingWeapon(automaticWeaponKey);
+    } else if (!automaticHtmlImport) {
+      loadExistingWeapon(defaultWeaponKey());
     }
 
     if (automaticHtmlImport) {
@@ -2084,7 +2044,7 @@
           setStatus(`Importing ${filename}...`);
           const result = await importHtmlSource(source, filename);
           replaceEditorRoot(result.model);
-          currentWeaponId = 'custom';
+          currentWeaponId = document.getElementById('existingWeaponSelect').value || defaultWeaponKey();
           resetHistory('Import HTML model');
           frameModel();
           setStatus(`Imported ${result.meshCount} editable meshes from ${filename}`);

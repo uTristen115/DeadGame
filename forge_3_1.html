@@ -504,29 +504,72 @@ function makeLabel(text, color, width){
    ============================================================ */
 const N = v => +(+v).toFixed(2);
 const MAT_NAMES = ['wall','trim','plank','crate','steel','rust','dark','roof','concrete','glass','rock','dirt','grass'];
-const BASE_WEAPON_IDS = ['smg','shotgun','revolver','carbine','rifle','lmg'];
-const WEAPON_IDS = [...BASE_WEAPON_IDS];
-const WEAPON_LABELS = {
-  smg:'MILL SMG', shotgun:'TRENCH SHOTGUN', revolver:'RUST REVOLVER',
-  carbine:'HUNTING CARBINE', rifle:'SERVICE RIFLE', lmg:'BELT FED'
+const WEAPON_ALIASES = {
+  forge_1911handgunmodel:'pistol',
+  forge_millsmgfixed:'smg',
+  forge_minismg:'smg',
+  forge_trenchshotgunfixed:'shotgun',
+  forge_semiautorifle:'carbine',
+  forge_m4riflemodel:'rifle',
+  forge_akfixed:'rifle'
 };
+function normalizeWeaponId(id){
+  id = String(id || '').replace(/^game:/i, '').toLowerCase()
+    .replace(/[^a-z0-9_]+/g, '_').replace(/^_+|_+$/g, '');
+  return WEAPON_ALIASES[id] || id;
+}
+const DEFAULT_WEAPON_SLOTS = [
+  {id:'pistol', slot:'1', name:'FIELD PISTOL'},
+  {id:'smg', slot:'2', name:'MILL SMG'},
+  {id:'shotgun', slot:'3', name:'TRENCH SHOTGUN'},
+  {id:'revolver', slot:'4', name:'RUST REVOLVER'},
+  {id:'carbine', slot:'5', name:'HUNTING CARBINE'},
+  {id:'rifle', slot:'6', name:'SERVICE RIFLE'},
+  {id:'lmg', slot:'7', name:'BELT FED'},
+];
+const CATALOG_WEAPON_SLOTS = Array.isArray(window.DEAD_GAME_WEAPON_SLOTS) && window.DEAD_GAME_WEAPON_SLOTS.length
+  ? window.DEAD_GAME_WEAPON_SLOTS
+  : DEFAULT_WEAPON_SLOTS;
+const WEAPON_IDS = [];
+const WEAPON_LABELS = {};
+function registerWeaponSlot(slot){
+  const id = normalizeWeaponId(slot && (slot.id || slot.folder));
+  if(!id) return;
+  if(!WEAPON_IDS.includes(id)) WEAPON_IDS.push(id);
+  WEAPON_LABELS[id] = String((slot && slot.name) || id).toUpperCase();
+  if(slot && slot.catalogId) WEAPON_ALIASES[normalizeWeaponId(slot.catalogId)] = id;
+  if(slot && slot.folder) WEAPON_ALIASES[normalizeWeaponId(slot.folder)] = id;
+}
+CATALOG_WEAPON_SLOTS.forEach(registerWeaponSlot);
 function forgeWeaponCatalogId(filename){
   return 'forge_' + String(filename || '').replace(/\.json$/i, '').toLowerCase()
     .replace(/[^a-z0-9]+/g, '_').replace(/^_+|_+$/g, '');
 }
 function registerForgeWeaponOption(entry){
-  if(!entry || !entry.filename) return;
-  const id = entry.catalogId || forgeWeaponCatalogId(entry.filename);
-  if(!id || WEAPON_IDS.includes(id)) return;
-  WEAPON_IDS.push(id);
-  WEAPON_LABELS[id] = (entry.name || entry.filename.replace(/\.json$/i, '')) +
-    (entry.gameReady === false ? ' [NOT NORMALIZED]' : ' [FORGE]');
+  if(entry && entry.catalogId && entry.weaponId) WEAPON_ALIASES[normalizeWeaponId(entry.catalogId)] = normalizeWeaponId(entry.weaponId);
+  if(entry && entry.gameSlot) registerWeaponSlot(entry);
 }
 (window.DEAD_GAME_SOURCE_WEAPON_FILES || []).forEach(registerForgeWeaponOption);
-function weaponOptionLabel(id){ return WEAPON_LABELS[id] || String(id || 'WEAPON').toUpperCase(); }
+function weaponOptionLabel(id){ id = normalizeWeaponId(id); return WEAPON_LABELS[id] || String(id || 'WEAPON').toUpperCase(); }
+function weaponBuyListedName(p){
+  const name = p && p.name != null ? String(p.name).trim() : '';
+  return name || weaponOptionLabel(p && p.weapon);
+}
+function weaponBuyListedCost(p){
+  const cost = Number(p && p.cost);
+  return Number.isFinite(cost) && cost > 0 ? Math.max(0, Math.round(cost)) : 0;
+}
+function weaponBuyOverrideOptions(p){
+  const opts = {};
+  const name = p && p.name != null ? String(p.name).trim() : '';
+  if(name) opts.name = name;
+  const cost = weaponBuyListedCost(p);
+  if(cost > 0) opts.cost = cost;
+  return opts;
+}
 function syncForgeWeaponSelects(){
   document.querySelectorAll('select[data-p="weapon"]').forEach(select => {
-    const value = select.value;
+    const value = normalizeWeaponId(select.value);
     select.replaceChildren();
     for(const id of WEAPON_IDS){
       const option = document.createElement('option');
@@ -538,40 +581,9 @@ function syncForgeWeaponSelects(){
   });
 }
 async function refreshForgeWeaponOptions(){
-  if(location.protocol === 'file:') return;
-  try{
-    const response = await fetch(`gunshtml/?cacheBust=${Date.now()}`, {cache:'no-store'});
-    if(!response.ok) return;
-    const index = new DOMParser().parseFromString(await response.text(), 'text/html');
-    const filenames = Array.from(index.querySelectorAll('a[href]'))
-      .map(anchor => {
-        try{ return decodeURIComponent(new URL(anchor.getAttribute('href'), response.url).pathname.split('/').pop()); }
-        catch(e){ return ''; }
-      })
-      .filter(filename => /\.json$/i.test(filename));
-    let changed = false;
-    for(const filename of new Set(filenames)){
-      const id = forgeWeaponCatalogId(filename);
-      if(WEAPON_IDS.includes(id)) continue;
-      let entry = {filename, catalogId:id, name:filename.replace(/\.json$/i, '')};
-      try{
-        const projectResponse = await fetch(`gunshtml/${encodeURIComponent(filename)}?cacheBust=${Date.now()}`, {cache:'no-store'});
-        if(projectResponse.ok){
-          const project = await projectResponse.json();
-          const userData = project.object && project.object.userData || {};
-          entry.name = userData.forgeProjectName || entry.name;
-          entry.weaponId = userData.forgeWeaponId || null;
-          entry.gameReady = userData.forgeGameReady === true;
-        }
-      }catch(e){}
-      registerForgeWeaponOption(entry);
-      changed = true;
-    }
-    if(changed) syncForgeWeaponSelects();
-  }catch(e){}
+  (window.DEAD_GAME_SOURCE_WEAPON_FILES || []).forEach(registerForgeWeaponOption);
 }
 refreshForgeWeaponOptions();
-setInterval(refreshForgeWeaponOptions, 4000);
 const PERK_IDS = ['reload','speed','health','headshot','regen'];
 const PERK_PREVIEW = {
   reload:   {short:'QUICK HANDS', desc:'FASTER RELOAD', color:'e7b53a', cost:1500},
@@ -2955,6 +2967,8 @@ const KIT = {
     label:'Weapon Wall-Buy', cat:'INTERACTIVE',
     params:[
       {k:'weapon', label:'weapon', type:'select', def:'shotgun', opts:WEAPON_IDS},
+      {k:'name',   label:'listed name', type:'text', def:''},
+      {k:'cost',   label:'price (0 default)', min:0, max:99999, step:50, def:0},
       {k:'zone',   label:'zone',   min:0, max:7, step:1, def:0},
     ],
     build(p){ const grp = new THREE.Group();
@@ -2978,16 +2992,20 @@ const KIT = {
         peg.position.set(px, 1.56, 0.2);
         grp.add(peg);
       }
-      const label = makeLabel(weaponOptionLabel(p.weapon), '#ffd27a', 3.7);
+      const cost = weaponBuyListedCost(p);
+      const labelText = weaponBuyListedName(p) + (cost > 0 ? ' - ' + cost : '');
+      const label = makeLabel(labelText, '#ffd27a', 3.7);
       label.position.y = 2.55;
       grp.add(label);
       return grp; },
     exp(o){ const p = o.p;
-      const id = (p.weapon||'shotgun').replace(/[^a-zA-Z0-9_]/g,'');
+      const id = normalizeWeaponId(p.weapon || 'shotgun');
       let note = WEAPON_IDS.includes(id) ? '' :
         `  // NOTE: '${id}' must exist in WEAPON_DEFS (with a cost) for this to work`;
       if(o.y > 0.01) note += `  // NOTE: y=${N(o.y)} ignored — wall buys hang at a fixed height`;
-      return `addWeaponWallBuy(WEAPON_DEFS.${id}, ${N(o.x)}, ${N(o.z)}, ${N(o.ry*Math.PI/180)}, ${Math.round(p.zone)});` + note; }
+      const opts = weaponBuyOverrideOptions(p);
+      const optsArg = Object.keys(opts).length ? `, ${JSON.stringify(opts)}` : '';
+      return `addWeaponWallBuy(WEAPON_DEFS[${JSON.stringify(id)}], ${N(o.x)}, ${N(o.z)}, ${N(o.ry*Math.PI/180)}, ${Math.round(p.zone)}${optsArg});` + note; }
   },
   perkmachine: {
     label:'Perk Machine', cat:'INTERACTIVE',
@@ -4637,6 +4655,7 @@ function paramRows(def, vals){
   let html = '';
   for(const p of def.params){
     if(vals[p.k] === undefined) vals[p.k] = p.def;
+    if(p.k === 'weapon') vals[p.k] = normalizeWeaponId(vals[p.k]);
     if(p.type === 'text'){
       html += `<div class="row"><label>${p.label}</label>
         <input type="text" data-p="${p.k}" value="${vals[p.k]}"></div>`;

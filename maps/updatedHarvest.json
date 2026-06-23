@@ -3724,7 +3724,9 @@
    "ry": 0,
    "p": {
     "weapon": "forge_m4riflemodel",
-    "zone": 4
+    "zone": 4,
+    "name": "M4A1",
+    "cost": 10
    }
   }
  ]

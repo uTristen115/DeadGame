@@ -184,10 +184,17 @@
 
   /* ---------- HUD ---------- */
   #hud{position:fixed;inset:0;pointer-events:none;z-index:10;display:none;}
-  #crosshair{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);}
-  #crosshair span{position:absolute;background:rgba(232,227,211,.9);}
-  #crosshair .h{width:14px;height:2px;left:-7px;top:-1px;}
-  #crosshair .v{width:2px;height:14px;left:-1px;top:-7px;}
+  #crosshair{--gap:12px;position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);
+    width:0;height:0;opacity:1;transition:opacity .12s ease;}
+  #crosshair.ads{opacity:.18;}
+  #crosshair span{position:absolute;background:rgba(232,227,211,.9);
+    box-shadow:0 0 8px rgba(232,227,211,.28);}
+  #crosshair .left,#crosshair .right{width:14px;height:2px;top:-1px;}
+  #crosshair .left{right:var(--gap);}
+  #crosshair .right{left:var(--gap);}
+  #crosshair .top,#crosshair .bottom{width:2px;height:14px;left:-1px;}
+  #crosshair .top{bottom:var(--gap);}
+  #crosshair .bottom{top:var(--gap);}
   #healthwrap{position:absolute;left:26px;bottom:26px;width:260px;}
   #healthlabel{font-size:11px;letter-spacing:.3em;color:var(--rot);margin-bottom:5px;}
   #healthbar{height:14px;background:#151a15;border:1px solid #39402f;}
@@ -378,7 +385,7 @@
 
 <!-- HUD -->
 <div id="hud">
-  <div id="crosshair"><span class="h"></span><span class="v"></span></div>
+  <div id="crosshair"><span class="top"></span><span class="right"></span><span class="bottom"></span><span class="left"></span></div>
   <div id="topbar">
     <div>WAVE<b id="waveNum">1</b></div>
     <div>POINTS<b id="scoreNum">0</b></div>
@@ -429,6 +436,23 @@ const MAX_LOOK_DELTA = 72;      // caps one event to about 9.5 degrees of rotati
 const LOOK_JUMP_REJECT = 1200;  // browser/driver glitch guard
 const LOOK_SETTLE_MS = 180;
 const LOOK_SETTLE_EVENTS = 1;
+const HIP_FOV = 72;
+const ADS_FOV = 52;
+const ADS_ENTER_SPEED = 12;
+const ADS_EXIT_SPEED = 16;
+const ADS_LOOK_MULT = 0.62;
+const HIP_SPREAD_MULT = 2.35;
+const ADS_SPREAD_MULT = 0.42;
+const HIP_SPREAD_BLOOM_MAX = 0.055;
+const HIP_SPREAD_RECOVER = 0.07;
+const CROSSHAIR_MIN_GAP = 9;
+const CROSSHAIR_MAX_GAP = 62;
+const CROSSHAIR_SPREAD_SCALE = 540;
+const GUN_HIP_X = 0.22;
+const GUN_HIP_Y = -0.2;
+const GUN_ADS_X = 0.015;
+const GUN_ADS_Y = -0.145;
+const GUN_ADS_Z_OFFSET = 0.11;
 
 const WEAPON_DEFS = {
   pistol: {
@@ -481,6 +505,108 @@ const WEAPON_DEFS = {
     upgradedDamage:54, upgradedMagSize:90, upgradedFireInterval:0.105,
   },
 };
+
+const WEAPON_MODEL_STORAGE_PREFIX = 'dead-game-weapon-model:';
+const GAME_WEAPON_MODEL_PATHS = {};
+const DEFAULT_DYNAMIC_WEAPON_STATS = {
+  auto:false, cost:1800, magSize:20, damage:34, fireInterval:0.16, reloadTime:1.7,
+  pellets:1, spread:0.012, recoilPitch:0.018, recoilZ:-0.34, restZ:-0.43,
+  muzzleY:0.02, muzzleZ:-0.76, flashScale:1.05, knockback:0.45,
+  upgradedDamage:52, upgradedMagSize:30, upgradedFireInterval:0.12,
+};
+const WEAPON_ALIASES = {
+  forge_1911handgunmodel:'pistol',
+  forge_millsmgfixed:'smg',
+  forge_minismg:'smg',
+  forge_trenchshotgunfixed:'shotgun',
+  forge_semiautorifle:'carbine',
+  forge_m4riflemodel:'rifle',
+  forge_akfixed:'rifle',
+};
+
+function normalizeWeaponKey(id){
+  return String(id || '').replace(/^game:/i, '').toLowerCase()
+    .replace(/[^a-z0-9_]+/g, '_').replace(/^_+|_+$/g, '');
+}
+
+function weaponTitleFromId(id){
+  return String(id || 'weapon').replace(/[_-]+/g, ' ')
+    .replace(/\b\w/g, letter => letter.toUpperCase());
+}
+
+function upperWeaponName(name, fallback){
+  return String(name || fallback || 'Weapon').toUpperCase();
+}
+
+function makeDynamicWeaponDef(slot, index){
+  const id = normalizeWeaponKey(slot && (slot.id || slot.folder)) || ('weapon_' + (index + 1));
+  const slotNumber = String((slot && slot.slot) || (index + 1));
+  const title = weaponTitleFromId(id);
+  const name = upperWeaponName(slot && slot.name, title);
+  const short = upperWeaponName(slot && slot.short, title).slice(0, 16);
+  const magSize = DEFAULT_DYNAMIC_WEAPON_STATS.magSize;
+  const damage = DEFAULT_DYNAMIC_WEAPON_STATS.damage;
+  const fireInterval = DEFAULT_DYNAMIC_WEAPON_STATS.fireInterval;
+  return {
+    ...DEFAULT_DYNAMIC_WEAPON_STATS,
+    id,
+    slot:slotNumber,
+    name,
+    short,
+    upgradedDamage:Math.round(damage * 1.5),
+    upgradedMagSize:Math.max(magSize + 1, Math.round(magSize * 1.5)),
+    upgradedFireInterval:Math.max(0.05, +(fireInterval * 0.78).toFixed(3)),
+  };
+}
+
+function registerDynamicWeaponSlots(){
+  const slots = Array.isArray(window.DEAD_GAME_WEAPON_SLOTS) ? window.DEAD_GAME_WEAPON_SLOTS : [];
+  for(const [index, slot] of slots.entries()){
+    const id = normalizeWeaponKey(slot && (slot.id || slot.folder));
+    if(!id) continue;
+    if(WEAPON_DEFS[id]){
+      WEAPON_DEFS[id].slot = String(slot.slot || WEAPON_DEFS[id].slot || (index + 1));
+      WEAPON_DEFS[id].name = upperWeaponName(slot.name, WEAPON_DEFS[id].name);
+      WEAPON_DEFS[id].short = upperWeaponName(slot.short, WEAPON_DEFS[id].short).slice(0, 16);
+    } else {
+      WEAPON_DEFS[id] = makeDynamicWeaponDef({...slot, id}, index);
+    }
+    const modelPath = slot.modelPath || slot.path || `weapons/${slot.folder || id}/usemodel.json`;
+    GAME_WEAPON_MODEL_PATHS[id] = modelPath;
+    if(slot.catalogId) WEAPON_ALIASES[normalizeWeaponKey(slot.catalogId)] = id;
+    if(slot.folder) WEAPON_ALIASES[normalizeWeaponKey(slot.folder)] = id;
+  }
+  if(!slots.length){
+    for(const id of Object.keys(WEAPON_DEFS)) GAME_WEAPON_MODEL_PATHS[id] = `weapons/${id}/usemodel.json`;
+  }
+}
+
+function weaponModelStorageKey(id){
+  return WEAPON_MODEL_STORAGE_PREFIX + resolveWeaponId(id);
+}
+
+function resolveWeaponId(id){
+  const key = normalizeWeaponKey(id);
+  return WEAPON_DEFS[key] ? key : (WEAPON_ALIASES[key] || key);
+}
+
+function weaponDefById(id){
+  return WEAPON_DEFS[resolveWeaponId(id)] || null;
+}
+
+function weaponSlotSortValue(def){
+  const value = Number.parseInt(def && def.slot, 10);
+  return Number.isFinite(value) ? value : 9999;
+}
+
+function orderedWeaponDefs(){
+  return Object.values(WEAPON_DEFS).sort((a, b) => {
+    const diff = weaponSlotSortValue(a) - weaponSlotSortValue(b);
+    return diff || String(a.name).localeCompare(String(b.name));
+  });
+}
+
+registerDynamicWeaponSlots();
 
 const PERK_MACHINE_DEFS = {
   reload: {
@@ -587,7 +713,7 @@ const player = {
   yaw: 0, pitch: 0,
   health: 100, maxHealth: 100, lastHurt: -99,
   ammo: MAG_SIZE, reloading: false, reloadT: 0,
-  firing: false, fireCooldown: 0,
+  firing: false, aiming: false, aimT: 0, spreadBloom: 0, fireCooldown: 0,
   score: 0, kills: 0,
   weaponId: 'pistol',
   ownedWeapons: {pistol:true},
@@ -699,7 +825,7 @@ const ui = {
   score: $('scoreNum'), kills: $('killNum'), banner: $('waveBanner'),
   damage: $('damage'), reload: $('reloadmsg'), finalStats: $('finalStats'),
   prompt: $('prompt'), power: $('powerState'), perks: $('perks'),
-  weapon: $('weaponName'), weaponSlots: $('weaponSlots'),
+  weapon: $('weaponName'), weaponSlots: $('weaponSlots'), crosshair: $('crosshair'),
 };
 const mpUI = {
   host: $('mpHostBtn'), join: $('mpJoinBtn'), leave: $('mpLeaveBtn'),
@@ -829,7 +955,7 @@ const sfx = {
 
 // ------------------------- world -------------------------
 function initEngine(){
-  camera = new THREE.PerspectiveCamera(72, innerWidth/innerHeight, 0.1, 300);
+  camera = new THREE.PerspectiveCamera(HIP_FOV, innerWidth/innerHeight, 0.1, 300);
 
   renderer = new THREE.WebGLRenderer({antialias:true});
   renderer.setSize(innerWidth, innerHeight);
@@ -858,6 +984,7 @@ function initEngine(){
 
   buildGun();
   registerForgeWeaponCatalog();
+  applyStoredWeaponModelOverrides();
   clock = new THREE.Clock();
 }
 
@@ -1658,6 +1785,28 @@ function buildGun(){
   weaponModels.lmg = lmgModel;
   gun.add(pistolModel, smgModel, shotgunModel, revolverModel, carbineModel, rifleModel, lmgModel);
 
+  function makeGenericWeaponModel(def){
+    const group = new THREE.Group();
+    const bodyMat = new THREE.MeshPhongMaterial({color:0x2f343a, shininess:55, specular:0x525966});
+    const gripMat = new THREE.MeshLambertMaterial({color:0x1e1711});
+    gunMetalMats.push(bodyMat);
+    const body = B(0.16, 0.13, 0.58, bodyMat); body.position.set(0, 0.02, -0.26);
+    const barrel = cyl(0.026, 0.62, bodyMat); barrel.rotation.x = Math.PI/2; barrel.position.set(0, 0.04, -0.68);
+    const gripMesh = B(0.09, 0.24, 0.11, gripMat); gripMesh.position.set(0, -0.13, -0.04); gripMesh.rotation.x = 0.24;
+    const stock = B(0.16, 0.12, 0.22, gripMat); stock.position.set(0, 0.01, 0.14);
+    const sight = B(0.04, 0.035, 0.12, bodyMat); sight.position.set(0, 0.12, -0.38);
+    group.add(body, barrel, gripMesh, stock, sight);
+    group.name = def.name || def.id;
+    group.visible = false;
+    return group;
+  }
+  for(const def of orderedWeaponDefs()){
+    if(weaponModels[def.id]) continue;
+    const model = makeGenericWeaponModel(def);
+    weaponModels[def.id] = model;
+    gun.add(model);
+  }
+
   muzzleFlash = new THREE.Mesh(
     new THREE.PlaneGeometry(0.34, 0.34),
     new THREE.MeshBasicMaterial({color:0xffd27a, transparent:true, opacity:0,
@@ -1666,7 +1815,7 @@ function buildGun(){
   muzzleFlash.position.set(0, 0.045, -0.58);
   gun.add(muzzleFlash);
 
-  gun.position.set(0.22, -0.2, -0.45);
+  gun.position.set(GUN_HIP_X, GUN_HIP_Y, -0.45);
   camera.add(gun);
 
   if(new URLSearchParams(location.search).get('weaponForgeBridge') === '1' && window.parent !== window){
@@ -1689,8 +1838,8 @@ function buildGun(){
           }
         }
         const definitions = Object.fromEntries(
-          Object.entries(WEAPON_DEFS).map(([id, def]) => [
-            id,
+          orderedWeaponDefs().map(def => [
+            def.id,
             {id:def.id, slot:def.slot, name:def.name, short:def.short}
           ])
         );
@@ -1713,37 +1862,75 @@ function registerForgeWeaponCatalog(){
   const files = window.DEAD_GAME_SOURCE_WEAPON_FILES || [];
   const modelsByFile = window.DEAD_GAME_WEAPON_MODELS_BY_FILE || {};
   for(const entry of files){
-    const id = entry.catalogId;
-    const project = modelsByFile[entry.filename];
-    if(!id || !project || WEAPON_DEFS[id] || weaponModels[id]) continue;
-    const baseId = entry.weaponId && WEAPON_DEFS[entry.weaponId] ? entry.weaponId : 'rifle';
-    const base = WEAPON_DEFS[baseId] || WEAPON_DEFS.rifle;
-    try{
-      const model = new THREE.ObjectLoader().parse(project);
-      model.visible = false;
-      model.name = entry.name || id;
-      model.traverse(object => {
-        if(!object.isMesh) return;
-        object.castShadow = true;
-        object.receiveShadow = true;
-      });
-
-      const name = String(entry.name || entry.filename.replace(/\.json$/i, '')).toUpperCase();
-      WEAPON_DEFS[id] = {
-        ...base,
-        id,
-        name,
-        short:name.length > 16 ? name.slice(0, 16) : name,
-        cost:base.cost || 750,
-        forgeBaseId:baseId,
-        forgeSourceFile:entry.filename,
-        forgeGameReady:entry.gameReady === true
-      };
-      weaponModels[id] = model;
-      gun.add(model);
-    }catch(error){
-      console.warn('Could not register Forge weapon', entry.filename, error);
+    const weaponId = resolveWeaponId(entry.weaponId);
+    if(entry.catalogId && weaponId && WEAPON_DEFS[weaponId]) WEAPON_ALIASES[normalizeWeaponKey(entry.catalogId)] = weaponId;
+    if(Array.isArray(entry.legacyCatalogIds)){
+      for(const alias of entry.legacyCatalogIds) if(alias) WEAPON_ALIASES[normalizeWeaponKey(alias)] = weaponId;
     }
+    if(!entry.gameSlot || !WEAPON_DEFS[weaponId] || entry.gameReady !== true) continue;
+    const project = modelsByFile[entry.path] || modelsByFile[entry.filename];
+    if(!project) continue;
+    applyWeaponModelProject(weaponId, project, entry);
+  }
+}
+
+function forgeWeaponRuntimeYawOffset(entry){
+  if(entry && Number.isFinite(Number(entry.runtimeYawOffset))) return Number(entry.runtimeYawOffset);
+  const key = String(entry && (entry.catalogId || entry.path || entry.filename) || '').toLowerCase();
+  if(key === 'forge_m4riflemodel' || key === 'm4riflemodel.json' || key === 'weapons/rifle/model.json' || key === 'weapons/rifle/usemodel.json') return -Math.PI / 2;
+  return 0;
+}
+
+function prepareForgeWeaponRuntimeModel(model, entry){
+  if(model && model.userData && model.userData.forgeRuntimeYawOffset) return model;
+  const yawOffset = forgeWeaponRuntimeYawOffset(entry);
+  if(!yawOffset) return model;
+  const wrapper = new THREE.Group();
+  wrapper.name = model.name || entry.name || entry.catalogId || 'Forge Weapon';
+  wrapper.userData = {...model.userData, forgeRuntimeYawOffset:yawOffset};
+  model.rotation.y += yawOffset;
+  wrapper.add(model);
+  return wrapper;
+}
+
+function applyWeaponModelProject(weaponId, project, entry){
+  if(!WEAPON_DEFS[weaponId] || !project) return false;
+  try{
+    const model = prepareForgeWeaponRuntimeModel(new THREE.ObjectLoader().parse(project), entry || {weaponId});
+    model.visible = false;
+    model.name = (entry && entry.name) || WEAPON_DEFS[weaponId].name;
+    model.traverse(object => {
+      if(!object.isMesh) return;
+      object.castShadow = true;
+      object.receiveShadow = true;
+    });
+    const old = weaponModels[weaponId];
+    if(old && old.parent === gun) gun.remove(old);
+    weaponModels[weaponId] = model;
+    gun.add(model);
+    updateGunModel();
+    return true;
+  }catch(error){
+    console.warn('Could not apply weapon model override', weaponId, error);
+    return false;
+  }
+}
+
+function applyStoredWeaponModelOverride(weaponId, raw){
+  if(!WEAPON_DEFS[weaponId] || !raw) return false;
+  try{
+    const project = typeof raw === 'string' ? JSON.parse(raw) : raw;
+    return applyWeaponModelProject(weaponId, project, {weaponId, name:WEAPON_DEFS[weaponId].name});
+  }catch(error){
+    console.warn('Could not load saved weapon model override', weaponId, error);
+    return false;
+  }
+}
+
+function applyStoredWeaponModelOverrides(){
+  if(typeof localStorage === 'undefined') return;
+  for(const id of Object.keys(WEAPON_DEFS)){
+    applyStoredWeaponModelOverride(id, localStorage.getItem(weaponModelStorageKey(id)));
   }
 }
 
@@ -1757,40 +1944,32 @@ async function discoverForgeWeaponCatalog(){
   window.DEAD_GAME_WEAPON_MODELS_BY_FILE = window.DEAD_GAME_WEAPON_MODELS_BY_FILE || {};
   if(location.protocol === 'file:' || typeof fetch !== 'function') return;
   try{
-    const response = await fetch(`gunshtml/?cacheBust=${Date.now()}`, {cache:'no-store'});
-    if(!response.ok) return;
-    const index = new DOMParser().parseFromString(await response.text(), 'text/html');
-    const known = new Set(window.DEAD_GAME_SOURCE_WEAPON_FILES.map(entry => entry.filename));
-    const filenames = Array.from(index.querySelectorAll('a[href]'))
-      .map(anchor => {
-        try{ return decodeURIComponent(new URL(anchor.getAttribute('href'), response.url).pathname.split('/').pop()); }
-        catch(error){ return ''; }
-      })
-      .filter(filename => /\.json$/i.test(filename));
-
-    for(const filename of new Set(filenames)){
-      if(known.has(filename)) continue;
+    const known = new Set(window.DEAD_GAME_SOURCE_WEAPON_FILES.map(entry => entry.path || entry.filename));
+    for(const [weaponId, modelPath] of Object.entries(GAME_WEAPON_MODEL_PATHS)){
+      if(known.has(modelPath)) continue;
       try{
-        const projectResponse = await fetch(`gunshtml/${encodeURIComponent(filename)}?cacheBust=${Date.now()}`, {cache:'no-store'});
+        const projectResponse = await fetch(`gunshtml/${modelPath}?cacheBust=${Date.now()}`, {cache:'no-store'});
         if(!projectResponse.ok) continue;
         const project = await projectResponse.json();
         if(!project || !project.object) continue;
         const userData = project.object.userData || {};
-        window.DEAD_GAME_WEAPON_MODELS_BY_FILE[filename] = project;
+        window.DEAD_GAME_WEAPON_MODELS_BY_FILE[modelPath] = project;
         window.DEAD_GAME_SOURCE_WEAPON_FILES.push({
-          filename,
-          catalogId:forgeWeaponCatalogId(filename),
-          name:userData.forgeProjectName || filename.replace(/\.json$/i, ''),
-          weaponId:userData.forgeWeaponId && userData.forgeWeaponId !== 'custom' ? userData.forgeWeaponId : null,
-          gameReady:userData.forgeGameReady === true
+          filename:modelPath,
+          path:modelPath,
+          catalogId:weaponId,
+          name:userData.forgeProjectName || (WEAPON_DEFS[weaponId] && WEAPON_DEFS[weaponId].name) || weaponId,
+          weaponId,
+          gameSlot:true,
+          gameReady:true
         });
-        known.add(filename);
+        known.add(modelPath);
       }catch(error){
-        console.warn('Could not inspect Forge weapon file', filename, error);
+        console.warn('Could not inspect game weapon model file', modelPath, error);
       }
     }
   }catch(error){
-    console.warn('Could not scan gunshtml for Forge weapons', error);
+    console.warn('Could not scan gunshtml weapon folders', error);
   }
 }
 
@@ -2813,7 +2992,10 @@ function addWeaponUpgradeMachine(x, z, rotY, cfg, y){
       if(needsPower && !powerOn){ deny('NEEDS POWER'); return; }
       if(!spend(cost)) return;
       player.gunUpgraded = true;
-      for(const id of Object.keys(player.ownedWeapons)) player.weaponAmmo[id] = weaponMagSize(WEAPON_DEFS[id]);
+      for(const id of Object.keys(player.ownedWeapons)){
+        const def = weaponDefById(id);
+        if(def) player.weaponAmmo[def.id] = weaponMagSize(def);
+      }
       setWeaponUpgradeVisual(true);
       applyWeaponStats(false);
       sfx.buy();
@@ -2918,7 +3100,37 @@ function deadTreeAt(x,z){
   scene.add(grp);
 }
 
-function addWeaponWallBuy(def, x, z, rotY, zone){
+function wallBuyListedName(def, opts){
+  const raw = opts && (opts.name ?? opts.displayName ?? opts.label);
+  const name = raw == null ? '' : String(raw).trim();
+  return name || def.name;
+}
+
+function wallBuyListedCost(def, opts){
+  const raw = opts && (opts.cost ?? opts.price);
+  if(raw !== undefined && raw !== null && raw !== ''){
+    const cost = Number(raw);
+    if(Number.isFinite(cost)) return Math.max(0, Math.round(cost));
+  }
+  const baseCost = Number(def.cost);
+  return Number.isFinite(baseCost) ? Math.max(0, Math.round(baseCost)) : 0;
+}
+
+function weaponWallBuyOptionsFromParams(params){
+  const opts = {};
+  const name = params && params.name != null ? String(params.name).trim() : '';
+  if(name) opts.name = name;
+  const rawCost = params && (params.cost ?? params.price);
+  if(rawCost !== undefined && rawCost !== null && rawCost !== ''){
+    const cost = Number(rawCost);
+    if(Number.isFinite(cost) && cost > 0) opts.cost = Math.max(0, Math.round(cost));
+  }
+  return opts;
+}
+
+function addWeaponWallBuy(def, x, z, rotY, zone, opts){
+  const listedName = wallBuyListedName(def, opts);
+  const listedCost = wallBuyListedCost(def, opts);
   const grp = new THREE.Group();
   const board = new THREE.Mesh(new THREE.BoxGeometry(2.7, 1.05, 0.14), plankMat);
   board.position.y = 1.65;
@@ -2955,25 +3167,25 @@ function addWeaponWallBuy(def, x, z, rotY, zone){
   grp.traverse(m => { if(m.isMesh) m.castShadow = true; });
   scene.add(grp);
 
-  const label = makeLabel(def.name+' - '+def.cost, '#ffd27a', 3.7);
+  const label = makeLabel(listedName+' - '+listedCost, '#ffd27a', 3.7);
   label.position.set(x + Math.sin(rotY)*0.25, 2.55, z + Math.cos(rotY)*0.25);
   label.rotation.y = rotY;
   scene.add(label);
 
   interactables.push({
     x, z, r:2.5, zone,
-    label(){ return player.ownedWeapons[def.id] ? 'EQUIP '+def.name : 'BUY '+def.name+' - '+def.cost; },
+    label(){ return player.ownedWeapons[def.id] ? 'EQUIP '+listedName : 'BUY '+listedName+' - '+listedCost; },
     use(){
       if(player.ownedWeapons[def.id]){
         equipWeapon(def.id);
         return;
       }
-      if(!spend(def.cost)) return;
+      if(!spend(listedCost)) return;
       player.ownedWeapons[def.id] = true;
       player.weaponAmmo[def.id] = weaponMagSize(def);
       equipWeapon(def.id);
       sfx.buy();
-      showBanner(def.name, 1200);
+      showBanner(listedName, 1200);
       updateWeaponUI();
     },
   });
@@ -6017,8 +6229,11 @@ function buildForge(data){
         }
         case 'weaponbuy': {
           const weaponId = String(p.weapon || '').replace(/[^a-zA-Z0-9_]/g, '');
-          const def = WEAPON_DEFS[weaponId];
-          if(def && def.cost) addWeaponWallBuy(def, obj.x, obj.z, ryRad, Number.isFinite(+p.zone) ? Math.round(+p.zone) : null);
+          const def = weaponDefById(weaponId);
+          const opts = weaponWallBuyOptionsFromParams(p);
+          if(def && (def.cost || opts.cost !== undefined)){
+            addWeaponWallBuy(def, obj.x, obj.z, ryRad, Number.isFinite(+p.zone) ? Math.round(+p.zone) : null, opts);
+          }
           break;
         }
         case 'spawnpoint': break;   // editor-only marker — read by mapSpawn()
@@ -6257,7 +6472,10 @@ function buildBuilding(){
       if(!powerOn){ deny('NEEDS POWER'); return; }
       if(!spend(3000)) return;
       player.gunUpgraded = true;
-      for(const id of Object.keys(player.ownedWeapons)) player.weaponAmmo[id] = weaponMagSize(WEAPON_DEFS[id]);
+      for(const id of Object.keys(player.ownedWeapons)){
+        const def = weaponDefById(id);
+        if(def) player.weaponAmmo[def.id] = weaponMagSize(def);
+      }
       setWeaponUpgradeVisual(true);
       applyWeaponStats(false);
       sfx.buy();
@@ -6410,7 +6628,7 @@ function updatePerksUI(){
 }
 
 function activeWeaponDef(){
-  return WEAPON_DEFS[player.weaponId] || WEAPON_DEFS.pistol;
+  return weaponDefById(player.weaponId) || WEAPON_DEFS.pistol || orderedWeaponDefs()[0];
 }
 
 function weaponMagSize(def){
@@ -6476,7 +6694,7 @@ function setWeaponUpgradeVisual(on){
 function updateWeaponUI(){
   const def = activeWeaponDef();
   ui.weapon.textContent = def.name;
-  ui.weaponSlots.innerHTML = Object.values(WEAPON_DEFS)
+  ui.weaponSlots.innerHTML = orderedWeaponDefs()
     .filter(w => player.ownedWeapons[w.id])
     .map(w => {
       const label = w.slot + ' ' + w.short;
@@ -7021,6 +7239,48 @@ function toggleFlashlight(){
   updateFlashlightRange();
 }
 
+function aimDownSightActive(){
+  return player.aiming && !player.reloading && controlsActive();
+}
+
+function currentShotSpread(def){
+  const hipSpread = def.spread * HIP_SPREAD_MULT + player.spreadBloom;
+  const adsSpread = def.spread * ADS_SPREAD_MULT;
+  const aim = Math.max(0, Math.min(1, player.aimT || 0));
+  return hipSpread + (adsSpread - hipSpread) * aim;
+}
+
+function addShotSpreadBloom(def){
+  const aim = Math.max(0, Math.min(1, player.aimT || 0));
+  const hipBloom = Math.max(0.0025, def.spread * (def.pellets > 1 ? 0.22 : 0.48));
+  const adsBloom = hipBloom * 0.25;
+  const bloom = hipBloom + (adsBloom - hipBloom) * aim;
+  player.spreadBloom = Math.min(HIP_SPREAD_BLOOM_MAX, player.spreadBloom + bloom);
+}
+
+function updateAimAndCrosshair(dt, activeControls){
+  const targetAim = activeControls && aimDownSightActive() ? 1 : 0;
+  const aimSpeed = targetAim > player.aimT ? ADS_ENTER_SPEED : ADS_EXIT_SPEED;
+  player.aimT += (targetAim - player.aimT) * Math.min(1, dt * aimSpeed);
+  player.spreadBloom = Math.max(0, player.spreadBloom - HIP_SPREAD_RECOVER * dt);
+
+  if(camera){
+    const targetFov = HIP_FOV + (ADS_FOV - HIP_FOV) * player.aimT;
+    if(Math.abs(camera.fov - targetFov) > 0.01){
+      camera.fov = targetFov;
+      camera.updateProjectionMatrix();
+    }
+  }
+
+  if(ui.crosshair){
+    const spread = currentShotSpread(activeWeaponDef());
+    const gap = Math.max(CROSSHAIR_MIN_GAP, Math.min(CROSSHAIR_MAX_GAP,
+      CROSSHAIR_MIN_GAP + spread * CROSSHAIR_SPREAD_SCALE));
+    ui.crosshair.style.setProperty('--gap', gap.toFixed(1) + 'px');
+    ui.crosshair.classList.toggle('ads', player.aimT > 0.65);
+  }
+}
+
 function getShotDirection(spread){
   camera.getWorldDirection(shotDir);
   if(spread > 0){
@@ -7049,12 +7309,13 @@ function tryFire(){
   player.weaponAmmo[player.weaponId] = player.ammo;
   updateAmmoUI();
   if(def.id === 'shotgun') sfx.shotgun(); else sfx.shot();
+  addShotSpreadBloom(def);
 
   // muzzle flash + recoil
   muzzleFlash.material.opacity = 1;
   muzzleFlash.rotation.z = Math.random()*Math.PI;
   gun.position.z = def.recoilZ;
-  player.pitch = Math.min(player.pitch + def.recoilPitch, Math.PI/2 - 0.01);
+  player.pitch = Math.min(player.pitch + def.recoilPitch * (1 - player.aimT * 0.35), Math.PI/2 - 0.01);
   if(def.id === 'pistol') triggerPistolModelFire();
 
   const scoredHits = new Set();
@@ -7062,8 +7323,9 @@ function tryFire(){
   const shotOrigin = camera.position.clone();
   const shotPellets = [];
   let sparked = false;
+  const spread = currentShotSpread(def);
   for(let i=0; i<def.pellets; i++){
-    const dir = getShotDirection(def.spread).clone();
+    const dir = getShotDirection(spread).clone();
     const pellet = {dir:mpPackVec(dir, 4)};
     shotPellets.push(pellet);
     raycaster.set(shotOrigin, dir);
@@ -7180,7 +7442,8 @@ addEventListener('keydown', e => {
   if(e.code === 'KeyR' && active) startReload();
   if(e.code === 'KeyB' && active && !e.repeat) toggleFlashlight();
   if(e.code.startsWith('Digit') && active){
-    const wanted = Object.values(WEAPON_DEFS).find(w => w.slot === e.code.slice(5));
+    const digit = e.code === 'Digit0' ? '10' : e.code.slice(5);
+    const wanted = orderedWeaponDefs().find(w => w.slot === digit);
     if(wanted) equipWeapon(wanted.id);
   }
   if(e.code === 'KeyE' && active && activeInteract && !activeInteract.holdTime) activeInteract.use();
@@ -7191,13 +7454,25 @@ addEventListener('keyup', e => {
 });
 
 addEventListener('mousedown', e => {
+  if(e.button === 2){
+    if(pointerLocked && controlsActive()) player.aiming = true;
+    e.preventDefault();
+    return;
+  }
   if(!pointerLocked && running && !paused && !dead && !menuOverlayOpen() && e.button === 0){
     renderer.domElement.requestPointerLock();
     return;
   }
   if(pointerLocked && e.button === 0){ player.firing = true; tryFire(); }
 });
-addEventListener('mouseup',   e => { if(e.button === 0) player.firing = false; });
+addEventListener('mouseup', e => {
+  if(e.button === 0) player.firing = false;
+  if(e.button === 2) player.aiming = false;
+});
+
+addEventListener('contextmenu', e => {
+  if(running && !menuOverlayOpen()) e.preventDefault();
+});
 
 addEventListener('mousemove', e => {
   if(!pointerLocked) return;
@@ -7212,8 +7487,9 @@ addEventListener('mousemove', e => {
   }
   const dx = Math.max(-MAX_LOOK_DELTA, Math.min(MAX_LOOK_DELTA, rawX));
   const dy = Math.max(-MAX_LOOK_DELTA, Math.min(MAX_LOOK_DELTA, rawY));
-  player.yaw   -= dx * lookSensitivity;
-  player.pitch -= dy * lookSensitivity;
+  const aimLook = 1 + ((ADS_LOOK_MULT - 1) * Math.max(0, Math.min(1, player.aimT || 0)));
+  player.yaw   -= dx * lookSensitivity * aimLook;
+  player.pitch -= dy * lookSensitivity * aimLook;
   player.pitch = Math.max(-Math.PI/2+0.01, Math.min(Math.PI/2-0.01, player.pitch));
 });
 
@@ -7227,6 +7503,10 @@ document.addEventListener('pointerlockchange', () => {
   if(!pointerLocked && running && !dead){
     paused = !mpMatchRunning();
     player.firing = false;
+    player.aiming = false;
+    player.aimT = 0;
+    player.spreadBloom = 0;
+    updateAimAndCrosshair(0, false);
     for(const code of ['KeyW','KeyA','KeyS','KeyD','ShiftLeft','ShiftRight']) keys[code] = false;
     ui.start.style.display = 'flex';
     setMenuView('pause');
@@ -7250,6 +7530,14 @@ document.addEventListener('visibilitychange', () => {
     ignoreLookUntil = performance.now() + LOOK_SETTLE_MS;
     ignoreLookEvents = LOOK_SETTLE_EVENTS;
     lastLookAt = 0;
+  }
+});
+
+addEventListener('storage', e => {
+  if(!e.key || !e.key.startsWith(WEAPON_MODEL_STORAGE_PREFIX) || !e.newValue) return;
+  const weaponId = resolveWeaponId(e.key.slice(WEAPON_MODEL_STORAGE_PREFIX.length));
+  if(applyStoredWeaponModelOverride(weaponId, e.newValue)){
+    console.info('Updated live weapon model from Weapon Forge:', weaponId);
   }
 });
 
@@ -7953,7 +8241,7 @@ function mpApplyRemoteShot(peerId, msg, applyDamage){
   const pellets = Array.isArray(msg.pellets) && msg.pellets.length
     ? msg.pellets
     : [{dir:mpPackVec(fallbackDir, 4)}];
-  const def = WEAPON_DEFS[msg.weapon] || WEAPON_DEFS.pistol;
+  const def = weaponDefById(msg.weapon) || WEAPON_DEFS.pistol || orderedWeaponDefs()[0];
   const bodyDamage = Number(msg.bodyDamage) || (def.damage * (msg.upgraded ? 1.35 : 1));
   const headDamage = Number(msg.headDamage) || (bodyDamage * HEAD_MULT);
   const scoredHits = new Set();
@@ -8195,6 +8483,7 @@ function resetGame(begin = true){
   mp.zombieDirty = mp.isHost && mpHasConnections();
   Object.assign(player, {
     health:100, maxHealth:100, ammo:MAG_SIZE, reloading:false, firing:false,
+    aiming:false, aimT:0, spreadBloom:0,
     fireCooldown:0, score:0, kills:0, yaw:0, pitch:0, lastHurt:-99,
     floorY:0,
     weaponId:'pistol', ownedWeapons:{pistol:true}, weaponAmmo:{pistol:MAG_SIZE},
@@ -8252,6 +8541,7 @@ function resetGame(begin = true){
   ui.damage.style.opacity = 0;
   ui.reload.style.display = 'none';
   updateHealthUI(); updateAmmoUI(); updateScoreUI();
+  updateAimAndCrosshair(0, false);
   if(begin){
     running = true;
     ui.hud.style.display = 'block';
@@ -8286,11 +8576,14 @@ function update(dt){
   if(activeControls && keys['KeyS']) move.sub(fwd);
   if(activeControls && keys['KeyD']) move.add(right);
   if(activeControls && keys['KeyA']) move.sub(right);
-  const speed = (keys['ShiftLeft']||keys['ShiftRight']) ? player.sprintSpeed : player.walkSpeed;
+  const speed = ((keys['ShiftLeft']||keys['ShiftRight']) ? player.sprintSpeed : player.walkSpeed) * (1 - player.aimT * 0.22);
   if(move.lengthSq() > 0){
     move.normalize().multiplyScalar(speed);
   }
-  if(!activeControls) player.firing = false;
+  if(!activeControls){
+    player.firing = false;
+    player.aiming = false;
+  }
   player.vel.lerp(move, 1 - Math.pow(0.0001, dt));   // smooth accel/decel
   player.pos.addScaledVector(player.vel, dt);
 
@@ -8316,11 +8609,21 @@ function update(dt){
   mpTick(dt, t);
 
   // --- gun ---
+  updateAimAndCrosshair(dt, activeControls);
   if(player.fireCooldown > 0) player.fireCooldown -= dt;
-  if(player.firing) tryFire();
+  if(player.firing){
+    tryFire();
+    updateAimAndCrosshair(0, activeControls);
+  }
   muzzleFlash.material.opacity *= Math.pow(0.0001, dt*4);
-  gun.position.z += (activeWeaponDef().restZ - gun.position.z) * Math.min(1, dt*14);
-  gun.position.y = -0.2 + bobAmt*0.5;
+  const def = activeWeaponDef();
+  const targetGunX = GUN_HIP_X + (GUN_ADS_X - GUN_HIP_X) * player.aimT;
+  const targetGunY = GUN_HIP_Y + (GUN_ADS_Y - GUN_HIP_Y) * player.aimT + bobAmt * (0.5 - player.aimT * 0.35);
+  const targetGunZ = def.restZ + GUN_ADS_Z_OFFSET * player.aimT;
+  const gunEase = Math.min(1, dt*14);
+  gun.position.x += (targetGunX - gun.position.x) * gunEase;
+  gun.position.y += (targetGunY - gun.position.y) * gunEase;
+  gun.position.z += (targetGunZ - gun.position.z) * gunEase;
 
   if(player.reloading){
     player.reloadT += dt;
